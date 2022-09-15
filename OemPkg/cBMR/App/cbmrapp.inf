@@ -1,0 +1,78 @@
+## @file
+#  CBMR App
+#
+#  Copyright (c) 2021 Microsoft Corporation
+#
+#  License for UEFI CBMR App
+#
+##
+
+[Defines]
+  INF_VERSION                    = 1.25
+  BASE_NAME                      = cbmr_app
+  FILE_GUID                      = 3edbaac4-5017-4870-8cc4-721f9ef1974f
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CbmrAppEntry
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC Etc...
+#
+
+[Sources]
+  cbmr_ui.c
+  cbmrapp.c
+  graphics_common.c
+  wifi_cm.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  NetworkPkg/NetworkPkg.dec
+  OemPkg/OemPkg.dec
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  DevicePathLib
+  UefiLib
+  BaseLib
+  PrintLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  SortLib
+  DebugLib
+#  NetLib
+
+[Guids]
+  gEfiFileSystemInfoGuid
+  gEfiFileSystemVolumeLabelInfoIdGuid
+  gEfiFileInfoGuid
+
+[Ppis]
+
+[Protocols]
+  gEfiWiFi2ProtocolGuid
+  gEfiSupplicantProtocolGuid
+  gEfiLoadedImageProtocolGuid
+  gEfiShellProtocolGuid
+  gEfiDevicePathFromTextProtocolGuid
+  gEfiDevicePathUtilitiesProtocolGuid
+  gEfiDevicePathToTextProtocolGuid
+  gEfiSmbiosProtocolGuid
+  gEfiBlockIoProtocolGuid
+  gEfiPartitionInfoProtocolGuid
+  gEfiIp4Config2ProtocolGuid
+  gEfiPartitionRecordGuid
+
+[FeaturePcd]
+
+[Pcd]
+  gOemPkgTokenSpaceGuid.PcdCbmrShowWiFiUX
+  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiSid
+  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiPwd
+
+[BuildOptions]
+
+  # Override MSFT build option to remove /GL
+  MSFT:*_*_*_CC_FLAGS          = /GL- /WX-

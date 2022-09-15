@@ -52,6 +52,10 @@
 
   gMsFrontPageAuthTokenProtocolGuid = { 0xed285037, 0x228b, 0x4d48, { 0xad, 0xa0, 0x8b, 0x1, 0x8a, 0xcf, 0xef, 0xb1 }}
 
+  # WSSI - TODO 
+  # GPT Partition Record
+  gEfiPartitionRecordGuid = { 0xfe2555be, 0xd716, 0x4686, { 0xb9, 0xd0, 0x79, 0xdb, 0x59, 0x21, 0xb7, 0x0d } }
+
 [PcdsFixedAtBuild]
   gOemPkgTokenSpaceGuid.PcdUefiVersionNumber        |00000000|UINT32|0x00000001
   gOemPkgTokenSpaceGuid.PcdUefiBuildDate            |00000000|UINT32|0x00000002
@@ -94,3 +98,15 @@
   # then user can access the front page as a limited user.
   # If set to 0 gives an unlimited number of attempts.
   gOemPkgTokenSpaceGuid.PcdMaxPasswordAttempts|0x3|UINT8|0x0000000B
+
+  # WSSI
+  # cBMR application settings
+    ## Brings up WIFI SID/PWD request screen to allow overwriting defaults
+  gOemPkgTokenSpaceGuid.PcdCbmrShowWiFiUX     |FALSE|BOOLEAN|0x00010090
+
+  ## CHAR8 string indicating default WIFI SID.  If zero length string, app will attempt to use a wired connection.
+  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiSid |""  |VOID*  |0x00010091
+
+  ## CHAR8 string indicating default WIFI password.  If zero length string, app will attempt to use a wired connection.
+  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiPwd |""  |VOID*  |0x00010092
+  
