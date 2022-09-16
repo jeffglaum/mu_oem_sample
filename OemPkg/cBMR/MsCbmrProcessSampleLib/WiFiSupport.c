@@ -9,7 +9,7 @@
   specifically contains the primary entry function to initialize the WiFi access point.
 **/
 
-#include "MsCbmrProcessSampleLib.h"
+#include "CbmrProcessCommon.h"
 
 // Event used with the WiFi protocol
 EFI_EVENT gWiFiEvent = NULL;

@@ -40,7 +40,7 @@
 [Guids]
 
 [Protocols]
-  gMsCbmrProtocolGuid
+  gEfiMsCbmrProtocolGuid
   gEfiIp4Config2ProtocolGuid
   gEfiWiFi2ProtocolGuid
   gEfiSupplicantProtocolGuid
@@ -53,8 +53,8 @@
   gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkIPAddressTimeout
 
 [Depex]
-  gMsCbmrProtocolGuid AND
+  gEfiMsCbmrProtocolGuid AND
   gEfiIp4Config2ProtocolGuid AND
   gEfiWiFi2ProtocolGuid AND
   gEfiSupplicantProtocolGuid
-  
+

@@ -1,4 +1,4 @@
-/** @file MsCbmrProcessSampleLib.h
+/** @file CbmrProcessCommon.h
 
   cBMR Process Sample Library
 

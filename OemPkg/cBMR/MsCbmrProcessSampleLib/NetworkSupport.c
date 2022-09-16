@@ -9,7 +9,7 @@
   specifically contains the primary entry function to initialize the network.
 **/
 
-#include "MsCbmrProcessSampleLib.h"
+#include "CbmrProcessCommon.h"
 
 // Event used when a network protocol process is blocked by another in use process
 EFI_EVENT gEventFlag = NULL;

@@ -9,7 +9,7 @@
   specifically contains the primary entry function to initiate the entire process.
 **/
 
-#include "MsCbmrProcessSampleLib.h"
+#include "CbmrProcessCommon.h"
 
 
 /**

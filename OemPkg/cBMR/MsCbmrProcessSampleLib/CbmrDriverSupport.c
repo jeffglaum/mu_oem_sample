@@ -9,7 +9,7 @@
   specifically contains the primary function to communicate to the cBMR driver.
 **/
 
-#include "MsCbmrProcessSampleLib.h"
+#include "CbmrProcessCommon.h"
 
 
 /**
