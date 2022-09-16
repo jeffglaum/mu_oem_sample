@@ -1,0 +1,36 @@
+## @file CbmrSampleShellApp.inf
+#
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#  cBMR Process Initiation Sample Shell Application
+##
+
+[Defines]
+  INF_VERSION                    = 1.25
+  BASE_NAME                      = CbmrSampleShellApp
+  FILE_GUID                      = B66C3996-C4F7-48A2-A9E8-F5CBA0A88BD0
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CbmrSampleShellAppEntry
+
+[Sources]
+  CbmrSampleShellApp.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+  Sc8280xFamilyPkg/Sc8280xFamilyPkg.dec    ## TO_DO - Move to proper package ##
+
+[LibraryClasses]
+  BaseLib
+  UefiApplicationEntryPoint
+  UefiLib
+  DebugLib
+  CbmrProcessSampleLib
+  ShellLib
+
+[Protocols]
+  gEfiShellParametersProtocolGuid
+

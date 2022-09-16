@@ -1,0 +1,60 @@
+## @file MsCbmrProcessSampleLib.inf
+#
+#  cBMR Process Sample Library
+#
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#  The library is intended to be a sample of how to initiate the cBMR (Cloud Bare Metal Recovery) process.
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010017
+  BASE_NAME                      = MsCbmrProcessSampleLib
+  FILE_GUID                      = 490ED6D9-4654-47B7-B1DC-3294BAEA7E09
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MsCbmrProcessSampleLib|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_APPLICATION UEFI_DRIVER
+
+[Sources]
+  MsCbmrProcessSampleLib.c
+  CbmrDriverSupport.c
+  NetworkSupport.c
+  WiFiSupport.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  NetworkPkg/NetworkPkg.dec
+  OemPkg/OemPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  PrintLib
+  UefiLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  DebugLib
+
+[Guids]
+
+[Protocols]
+  gMsCbmrProtocolGuid
+  gEfiIp4Config2ProtocolGuid
+  gEfiWiFi2ProtocolGuid
+  gEfiSupplicantProtocolGuid
+
+[Pcd]
+  gOemPkgTokenSpaceGuid.PcdCbmrGetWifiNetworksTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrWifiNetworkConnectTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrSetDhcpPolicyTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkInterfaceInfoTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkIPAddressTimeout
+
+[Depex]
+  gMsCbmrProtocolGuid AND
+  gEfiIp4Config2ProtocolGuid AND
+  gEfiWiFi2ProtocolGuid AND
+  gEfiSupplicantProtocolGuid
+  
