@@ -24,7 +24,7 @@
 **/
 EFI_STATUS
 EFIAPI
-CbmrDownloadCollaterals(
+DownloadCbmrCollaterals(
   IN  EFI_MS_CBMR_PROTOCOL    *CbmrProtocol,
   OUT EFI_MS_CBMR_COLLATERAL  **CollateralDataPtr,
   OUT UINTN                   *CollateralCount)
@@ -83,66 +83,67 @@ CbmrDownloadCollaterals(
 }
 
 /**
-  Primary function to initiate the bare metal recovery process
+  Locates the cBMR protocol and verifies the driver's revision matches the protocol being used in this compilation.
 
-  @param[in]  UseWiFi           TRUE if the process should attempt to attach to a WiFi access point, FALSE for wired
-  @param[in]  SSIdName          SSID string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
-  @param[in]  SSIdPassword      Password  string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
-  @param[in]  ProgressCallback  Callback function to receive progress information
+  @param[out] CbmrProtocol       Pointer to the cBMR protocol to use
 
-  @retval EFI_STATUS
+  @retval     EFI_STATUS
 **/
 EFI_STATUS
 EFIAPI
-InitiateRecoveryProcess (
-  IN BOOLEAN                        UseWiFi,
-  IN CHAR8                          *SSIdName,
-  IN CHAR8                          *SSIdPassword,
-  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback)
+LocateCbmrProtocol(
+  OUT EFI_MS_CBMR_PROTOCOL **CbmrProtocolPtr)
 {
-  EFI_MS_CBMR_PROTOCOL *CbmrProtocol;
-  EFI_MS_CBMR_CONFIG_DATA CbmrConfigData;
-  EFI_MS_CBMR_ERROR_DATA ErrorData;
   EFI_STATUS Status;
-  UINTN DataSize;
-
-  //
-  // Input checks
-  //
 
   DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
-  if (UseWiFi && (SSIdName == NULL || SSIdPassword == NULL)) {
-    ASSERT(SSIdName);
-    ASSERT(SSIdPassword);
-    return EFI_INVALID_PARAMETER;
-  }
-  if (ProgressCallback == NULL) {
-    ASSERT(ProgressCallback);
-    return EFI_INVALID_PARAMETER;
-  }
 
-  //
-  // Locate the cBMR protocol and verify the published version
-  //
-
-  Status = gBS->LocateProtocol (&gEfiMsCbmrProtocolGuid, NULL, (VOID**)&CbmrProtocol);
+  // Locate the protocol
+  Status = gBS->LocateProtocol (&gEfiMsCbmrProtocolGuid,
+                                NULL,
+                                (VOID**)CbmrProtocolPtr);
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR(Status);
     return Status;
   }
 
-  DEBUG ((DEBUG_INFO, "       EFI_MS_CBMR_PROTOCOL revision 0x%016lX\n", CbmrProtocol->Revision));
-
-  if (EFI_MS_CBMR_PROTOCOL_REVISION != CbmrProtocol->Revision) {
+  // Verify the version matches the .H file being compiled
+  DEBUG ((DEBUG_INFO, "       EFI_MS_CBMR_PROTOCOL revision 0x%016lX\n", (*CbmrProtocolPtr)->Revision));
+  if (EFI_MS_CBMR_PROTOCOL_REVISION != (*CbmrProtocolPtr)->Revision) {
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: Expected EFI_MS_CBMR_PROTOCOL revision 0x%016lX\n", (UINTN)EFI_MS_CBMR_PROTOCOL_REVISION));
     return EFI_PROTOCOL_ERROR;
   }
 
-  //
+  return EFI_SUCCESS;
+}
+
+/**
+  Sends the configuration block to the cBMR driver in preparation for the Stub-OS launch.
+
+  @param[in]  CbmrProtocol      Pointer to the cBMR protocol to use
+  @param[in]  UseWiFi           TRUE if the process should attempt to attach to a WiFi access point, FALSE for wired
+  @param[in]  SSIdName          SSID string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
+  @param[in]  SSIdPwd           Password  string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
+  @param[in]  ProgressCallback  Callback function to receive progress information.  May be NULL to use this library's default handler.
+
+  @retval     EFI_STATUS
+**/
+EFI_STATUS
+EFIAPI
+InitCbmrDriver (
+  IN EFI_MS_CBMR_PROTOCOL           *CbmrProtocol,
+  IN BOOLEAN                        UseWiFi,
+  IN CHAR8                          *SSIdName,
+  IN CHAR8                          *SSIdPassword,
+  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback)
+{
+  EFI_MS_CBMR_CONFIG_DATA CbmrConfigData;
+  EFI_STATUS Status;
+
+  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+
   // Setup the cBMR configuration input structure. For a wired connection, the structure is zeroed, for WiFi, the SSID
   // and password need to be set.
-  //
-
   ZeroMem (&CbmrConfigData, sizeof(CbmrConfigData));
   if (UseWiFi) {
 
@@ -165,10 +166,7 @@ InitiateRecoveryProcess (
     CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen(SSIdPassword);
   }
 
-  //
   // Call cBMR protocol configuration function
-  //
-
   Status = CbmrProtocol->Configure (CbmrProtocol,
                                     &CbmrConfigData,
                                     ProgressCallback);
@@ -177,41 +175,49 @@ InitiateRecoveryProcess (
     return Status;
   }
 
-  //
-  // The process is ready, initiate the OS image download
-  //
+  return EFI_SUCCESS;
+}
 
+/**
+  Initiates the cBMR driver's Start command.  Since that command should not return if the Stub-OS sucessfully launches,
+  this function should never return.
+
+  @param[in]  CbmrProtocol       Pointer to the cBMR protocol to use
+
+  @retval     EFI_STATUS
+**/
+EFI_STATUS
+EFIAPI
+LaunchStubOS (
+  IN EFI_MS_CBMR_PROTOCOL  *CbmrProtocol)
+{
+  EFI_MS_CBMR_ERROR_DATA ErrorData;
+  EFI_STATUS Status;
+  UINTN DataSize;
+
+  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+
+  // The process is ready, initiate the OS image download
   Status = CbmrProtocol->Start (CbmrProtocol);
 
-  // 
-  // NOTE:  Code should never get to this point.
-  //        The start should jump to the cBMR driver which will provide status through the callback then on success
-  //        will initiate the boot of the Stub-OS and never return.  The code after this point is for error handling.
-  //
+  // Proceeding further is an error
+  DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_MS_CBMR_PROTOCOL::Start() returned instead of launching the Stub-OS\n"));
 
-  if (EFI_ERROR(Status)) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_MS_CBMR_PROTOCOL::Start() - Status %r\n", Status));
+  // Report call error
+  DEBUG ((DEBUG_ERROR, "       EFI_MS_CBMR_PROTOCOL::Start() - Status %r\n", Status));
+
+  // Report extended error data
+  DataSize = sizeof(ErrorData);
+  Status = CbmrProtocol->GetData (CbmrProtocol, EfiMsCbmrExtendedErrorData, &ErrorData, &DataSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "       EFI_MS_CBMR_PROTOCOL::GetData() - Status %r\n", Status));
   }
-
   else {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: The Cloud Bare Metal Recovery process exited unexpectedly\n"));
-
-    DataSize = sizeof(ErrorData);
-    Status = CbmrProtocol->GetData (CbmrProtocol, EfiMsCbmrExtendedErrorData, &ErrorData, &DataSize);
-
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_MS_CBMR_PROTOCOL::GetData ( EfiMsCbmrExtendedErrorData ) - Status %r\n", Status));
-    }
-
-    else {
-      DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_MS_CBMR_ERROR_DATA::Status:   %r\n", ErrorData.Status));
-      DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_MS_CBMR_ERROR_DATA::StopCode: 0x%08x\n", ErrorData.StopCode));
-      DEBUG ((DEBUG_ERROR, "[cBMR]        CBMR defined stop codes with extended error info at https://aka.ms/systemrecoveryerror\n"));
-      Status = ErrorData.Status;
-    }
+    DEBUG ((DEBUG_ERROR, "       EFI_MS_CBMR_ERROR_DATA - Status %r\n", ErrorData.Status));
+    DEBUG ((DEBUG_ERROR, "       EFI_MS_CBMR_ERROR_DATA - StopCode 0x%08x\n", ErrorData.StopCode));
+    DEBUG ((DEBUG_ERROR, "       CBMR defined stop codes with extended error info at https://aka.ms/systemrecoveryerror\n"));
+    Status = ErrorData.Status;
   }
-
-  CbmrProtocol->Close (CbmrProtocol);
 
   return Status;
 }

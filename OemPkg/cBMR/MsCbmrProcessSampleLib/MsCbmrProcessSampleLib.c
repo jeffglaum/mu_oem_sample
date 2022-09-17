@@ -11,37 +11,10 @@
 
 #include "CbmrProcessCommon.h"
 
+// Globals used to hold the cBMR driver collateral list that can be used across callbacks
+static EFI_MS_CBMR_COLLATERAL *gCollaterals = NULL;
+static UINTN gCollateralCount = 0;
 
-/**
-  Using the cBMR collateral and current progress, the function calculates the % complete value and returns a decimal
-  between 0 and 100.
-
-  @param[in]  Collaterals      Pointer to the collateral buffer collected from the cBMR driver
-  @param[in]  CollateralCount  Number of structures in the Collaterals buffer
-  @param[in]  Progress         Pointer to the current progress status structure
-
-  @retval     Percentage complete
-**/
-UINTN
-EFIAPI
-CalculatePercentComplete(
-  IN EFI_MS_CBMR_COLLATERAL                     *Collaterals,
-  IN UINTN                                      CollateralCount,
-  IN EFI_MS_CBMR_COLLATERALS_DOWNLOAD_PROGRESS  *Progress)
-{
-  UINTN CurrentAmt = 0;
-  UINTN TotalAmt = 0;
-  UINTN x;
-
-  for (x = 0; x < CollateralCount; x++) {
-    if (x == Progress->CollateralIndex) {
-      CurrentAmt = TotalAmt + Progress->CollateralDownloadedSize;
-    }
-    TotalAmt += Collaterals[x].CollateralSize;
-  }
-
-  return (CurrentAmt * 100) / TotalAmt;
-}
 
 /**
   Callback function initiated by the cBMR driver to provide status on each HTTP packet received
@@ -57,16 +30,23 @@ CbmrExampleLibProgressCallback (
   IN EFI_MS_CBMR_PROTOCOL  *This,
   IN EFI_MS_CBMR_PROGRESS  *Progress)
 {
-  static EFI_MS_CBMR_COLLATERAL *Collaterals = NULL;
-  static UINTN CollateralCount = 0;
-  EFI_STATUS Status;
 
-  // Input check
-  if (This == NULL || Progress == NULL) {
-    ASSERT (This);
-    ASSERT (Progress);
-    return EFI_INVALID_PARAMETER;
+// #### ERROR TODO ####
+// FOUND A NULL 'This' pointer on a callback after download finished
+  if (This == NULL) {
+    DEBUG ((DEBUG_ERROR, "#### ERROR ####  [%a]  'This' pointer = %p\n", __FUNCTION__, This));
+    // Can continue, This is currently not used
   }
+  if (Progress == NULL) {
+    DEBUG ((DEBUG_ERROR, "#### ERROR ####  [%a]  'Progress' pointer = %p\n", __FUNCTION__, Progress));
+    return EFI_SUCCESS;
+  }
+////  // Input check
+////  if (This == NULL || Progress == NULL) {
+////    ASSERT (This);
+////    ASSERT (Progress);
+////    return EFI_INVALID_PARAMETER;
+////  }
 
   // Main switch to handle the phase indicator
   switch (Progress->CurrentPhase) {
@@ -81,31 +61,26 @@ CbmrExampleLibProgressCallback (
       DEBUG ((DEBUG_INFO, "[cBMR Callback]  MsCbmrPhaseConfigured\n"));
       break;
 
-    // Periodic callback when downloading data
+    // Periodic callback when downloading collaterals
     case MsCbmrPhaseCollateralsDownloading:
       DEBUG ((DEBUG_INFO, "[cBMR Callback]  MsCbmrPhaseCollateralsDownloading\n"));
 
-      ASSERT (Collaterals != NULL);
-      ASSERT (CollateralCount != 0);
-      DEBUG ((DEBUG_INFO,
-              "                 CollateralIndex          = %d\n",
-              Progress->ProgressData.DownloadProgress.CollateralIndex));
-      DEBUG ((DEBUG_INFO,
-              "                 CollateralDownloadedSize = %d\n",
-              Progress->ProgressData.DownloadProgress.CollateralDownloadedSize));
-      DEBUG ((DEBUG_INFO,
-              "                 Percent Complete         = %d%%\n",
-              CalculatePercentComplete(Collaterals, CollateralCount, &(Progress->ProgressData.DownloadProgress))));
+      ASSERT (gCollaterals != NULL);
+      ASSERT (gCollateralCount != 0);
+
+      DEBUG ((DEBUG_INFO, "    Collateral Data Block #%d\n", Progress->ProgressData.DownloadProgress.CollateralIndex + 1));
+      DEBUG ((DEBUG_INFO, "        Current Amt  = 0x%012X Bytes\n", Progress->ProgressData.DownloadProgress.CollateralDownloadedSize));
+      DEBUG ((DEBUG_INFO, "        Expected Amt = "));
+      if (Progress->ProgressData.DownloadProgress.CollateralIndex >= gCollateralCount) {
+        DEBUG ((DEBUG_INFO, "<unknown> Bytes\n"));
+      } else {
+        DEBUG ((DEBUG_INFO, "0x%012X Bytes\n", gCollaterals[Progress->ProgressData.DownloadProgress.CollateralIndex].CollateralSize));
+      }
       break;
 
-    // Collateral data has been collected from the network and is available
+    // Collateral data has finished it's download process
     case MsCbmrPhaseCollateralsDownloaded:
       DEBUG ((DEBUG_INFO, "[cBMR Callback]  MsCbmrPhaseCollateralsDownloaded\n"));
-
-      Status = CbmrDownloadCollaterals(This, &Collaterals, &CollateralCount);
-      if (EFI_ERROR(Status)) {
-        return Status;
-      }
       break;
 
     // Network servicing periodic callback
@@ -142,6 +117,7 @@ ExecuteCbmrProcess (
   IN CHAR8                          *SSIdPwd,          OPTIONAL
   IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback)  OPTIONAL
 {
+  EFI_MS_CBMR_PROTOCOL *CbmrProtocol;
   EFI_STATUS Status;
 
   //
@@ -189,17 +165,49 @@ ExecuteCbmrProcess (
   }
 
   //
-  // Initiate the cBMR recovery process
+  // Locate the cBMR protocol interface
   //
 
-  Status = InitiateRecoveryProcess (UseWiFi,
-                                    SSIdName,
-                                    SSIdPwd,
-                                    ProgressCallback);
+  Status = LocateCbmrProtocol(&CbmrProtocol);
   if (EFI_ERROR (Status)) {
     return Status;
   }
 
+  //
+  // Initialize the cBMR driver
+  //
+
+  Status = InitCbmrDriver (CbmrProtocol,
+                           UseWiFi,
+                           SSIdName,
+                           SSIdPwd,
+                           ProgressCallback);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Collect collaterals for the up-coming download process
+  //
+
+  Status = DownloadCbmrCollaterals(CbmrProtocol,
+                                   &gCollaterals,
+                                   &gCollateralCount);
+  if (EFI_ERROR(Status)) {
+    return Status;
+  }
+
+  //
+  // The process is ready, initiate the OS image download
+  //
+  // NOTE:  Code should never return from this call.  The start will initiate the download process that executes the
+  //        periodic callback for status then jumps to the Stub-OS boot process.  The code after this point is for
+  //        error handling.
+  //
+
+  Status = LaunchStubOS (CbmrProtocol);
+  FreePool(gCollaterals);
+  CbmrProtocol->Close (CbmrProtocol);
   return Status;
 }
 

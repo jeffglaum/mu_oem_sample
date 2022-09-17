@@ -53,19 +53,33 @@ EFIAPI
 ConnectToNetwork ();
 
 /**
-  Primary function to initiate the bare metal recovery process
+  Locates the cBMR protocol and verifies the driver's revision matches the protocol being used in this compilation.
 
-  @param[in]  UseWiFi           TRUE if the process should attempt to attach to a WiFi access point, FALSE for wired
-  @param[in]  SSIdName          SSID string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
-  @param[in]  SSIdPassword      Password  string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
-  @param[in]  ProgressCallback  Callback function to receive progress information
+  @param[out] CbmrProtocol       Pointer to the cBMR protocol to use
 
   @retval     EFI_STATUS
 **/
 EFI_STATUS
 EFIAPI
-InitiateRecoveryProcess (
-  IN BOOLEAN                        DoWiFi,
+LocateCbmrProtocol(
+  OUT EFI_MS_CBMR_PROTOCOL **CbmrProtocolPtr);
+
+/**
+  Sends the configuration block to the cBMR driver in preparation for the Stub-OS launch.
+
+  @param[in]  CbmrProtocol      Pointer to the cBMR protocol to use
+  @param[in]  UseWiFi           TRUE if the process should attempt to attach to a WiFi access point, FALSE for wired
+  @param[in]  SSIdName          SSID string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
+  @param[in]  SSIdPassword      Password  string used to attach to the WiFi access point. May be NULL if UseWifi is FALSE.
+  @param[in]  ProgressCallback  Callback function to receive progress information.  May be NULL to use this library's default handler.
+
+  @retval     EFI_STATUS
+**/
+EFI_STATUS
+EFIAPI
+InitCbmrDriver (
+  IN EFI_MS_CBMR_PROTOCOL           *CbmrProtocol,
+  IN BOOLEAN                        UseWiFi,
   IN CHAR8                          *SSIdName,
   IN CHAR8                          *SSIdPassword,
   IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback);
@@ -82,9 +96,21 @@ InitiateRecoveryProcess (
 **/
 EFI_STATUS
 EFIAPI
-CbmrDownloadCollaterals(
+DownloadCbmrCollaterals(
   IN  EFI_MS_CBMR_PROTOCOL    *CbmrProtocol,
   OUT EFI_MS_CBMR_COLLATERAL  **CollateralDataPtr,
   OUT UINTN                   *CollateralCount);
 
+/**
+  Initiates the cBMR driver's Start command.  Since that command should not return if the Stub-OS sucessfully launches,
+  this function should never return.
+
+  @param[in]  CbmrProtocol       Pointer to the cBMR protocol to use
+
+  @retval     EFI_STATUS
+**/
+EFI_STATUS
+EFIAPI
+LaunchStubOS (
+  IN EFI_MS_CBMR_PROTOCOL  *CbmrProtocol);
 
