@@ -20,8 +20,11 @@ Environment:
 
 --*/
 
-#include "cbmrapp.h"
+#include "CbmrApp.h"
 
+#include <Protocol/SimpleWindowManager.h>
+
+#include <UIToolKit/SimpleUIToolKit.h>
 
 EFI_SHELL_PROTOCOL* gEfiShellProtocol = NULL;
 PEFI_MS_CBMR_COLLATERAL gCbmrCollaterals = NULL;
@@ -439,6 +442,15 @@ CbmrAppEntry (
   Status = CbmrAppInit ();
   if (EFI_ERROR (Status)) {
     return Status;
+  }
+
+  // Initialize the Simple UI ToolKit.
+  //
+  Status = InitializeUIToolKit (ImageHandle);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [FP]: Failed to initialize the UI toolkit (%r).\r\n", Status));
+    goto Exit;
   }
 
   DEBUG ((DEBUG_INFO, "Initializing Application UI\n"));

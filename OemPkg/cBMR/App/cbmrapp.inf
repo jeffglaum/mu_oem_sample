@@ -9,7 +9,7 @@
 
 [Defines]
   INF_VERSION                    = 1.25
-  BASE_NAME                      = cbmr_app
+  BASE_NAME                      = CbmrApp
   FILE_GUID                      = 3edbaac4-5017-4870-8cc4-721f9ef1974f
   MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
@@ -21,16 +21,19 @@
 #
 
 [Sources]
-  cbmr_ui.c
-  cbmrapp.c
+  CbmrUi.c
+  CbmrApp.c
   graphics_common.c
   wifi_cm.c
+  CbmrAppStrings.uni
+  CbmrAppVfr.vfr
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   NetworkPkg/NetworkPkg.dec
   OemPkg/OemPkg.dec
+  MsGraphicsPkg/MsGraphicsPkg.dec
 
 [LibraryClasses]
   UefiApplicationEntryPoint
@@ -43,6 +46,8 @@
   SortLib
   DebugLib
 #  NetLib
+  HiiLib
+  UIToolKitLib
 
 [Guids]
   gEfiFileSystemInfoGuid
@@ -64,6 +69,9 @@
   gEfiPartitionInfoProtocolGuid
   gEfiIp4Config2ProtocolGuid
   gEfiPartitionRecordGuid
+  gEfiHiiConfigAccessProtocolGuid               ## PROTOCOL CONSUMES
+  gEfiFormBrowser2ProtocolGuid                  ## PROTOCOL CONSUMES
+  gMsSWMProtocolGuid                            ## PROTOCOL CONSUMES
 
 [FeaturePcd]
 
@@ -71,6 +79,7 @@
   gOemPkgTokenSpaceGuid.PcdCbmrShowWiFiUX
   gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiSid
   gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiPwd
+  gMsGraphicsPkgTokenSpaceGuid.PcdCurrentPointerState
 
 [BuildOptions]
 

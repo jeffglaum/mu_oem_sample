@@ -20,8 +20,11 @@ Environment:
 
 --*/
 
-#include "cbmrapp.h"
+#include "CbmrApp.h"
+#include "CbmrAppVfr.h"
 #include "graphics_common.h"
+
+#include <MsDisplayEngine.h>
 
 
 typedef struct _CBMR_UI {
@@ -38,6 +41,26 @@ typedef struct _CBMR_UI {
 
 CBMR_UI gCmbrUI = {0};
 
+EFI_HII_CONFIG_ROUTING_PROTOCOL  *mHiiConfigRouting;
+EFI_FORM_BROWSER2_PROTOCOL         *mFormBrowser2;
+EFI_HII_HANDLE  mFormHandle;
+DISPLAY_ENGINE_SHARED_STATE      mDisplayEngineState;
+
+// Form GUID
+//
+EFI_GUID  gCbmrAppFormSetGuid = CBMR_APP_FORMSET_GUID;
+
+//
+// These are the VFR compiler generated data representing our VFR data.
+//
+extern UINT8  CbmrAppVfrBin[];
+
+//
+// This is the VFR compiler generated header file which defines the
+// string identifiers.
+//
+
+extern UINT8  CbmrAppStrings[];
 
 EFI_STATUS
 EFIAPI
@@ -80,11 +103,27 @@ CbmrUIInitialize ()
 {
   EFI_STATUS Status = EFI_SUCCESS;
   UINT32 PreviousMode = 0;
+  EFI_BROWSER_ACTION_REQUEST  ActionRequest;
 
   if (gCmbrUI.IsUIInitialized == TRUE) {
     DEBUG ((DEBUG_WARN, "CbmrUIInitialize () already initialized"));
     return Status;
   }
+
+    //
+    // Locate Hii relative protocols
+    //
+    Status = gBS->LocateProtocol (&gEfiFormBrowser2ProtocolGuid, NULL, (VOID **)&mFormBrowser2);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+    Status = gBS->LocateProtocol (&gEfiHiiConfigRoutingProtocolGuid, NULL, (VOID **)&mHiiConfigRouting);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+
 
   DEBUG ((DEBUG_INFO, "Setting CBMR Graphics resolution\n"));
   Status = GfxSetGraphicsResolution (&PreviousMode);
@@ -120,6 +159,42 @@ CbmrUIInitialize ()
     goto Exit;
   }
 
+  // Set shared pointer to user input context structure in a PCD so it can be shared.
+  //
+  PcdSet64S (PcdCurrentPointerState, (UINT64)(UINTN)&mDisplayEngineState);
+
+    //
+    // Publish our HII data
+    //
+    mFormHandle = HiiAddPackages (&gCbmrAppFormSetGuid,
+                                  NULL,
+                                  CbmrAppVfrBin,
+                                  CbmrAppStrings,
+                                  NULL
+                                  );
+
+    if (mFormHandle == NULL) {
+      DEBUG ((DEBUG_ERROR, "HiiAddPackages () failed\n"));
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+  // Call the browser to display the selected form.
+  //
+  Status = mFormBrowser2->SendForm (
+                            mFormBrowser2,
+                            &mFormHandle,
+                            1,  // Handle Count.
+                            NULL,
+                            0,    // FormID.
+                            (EFI_SCREEN_DESCRIPTOR *)NULL,
+                            &ActionRequest
+                            );
+
+
+  // JDG
+  while (TRUE) {}
+
+  
   gCmbrUI.IsUIInitialized = TRUE;
   return Status;
 
