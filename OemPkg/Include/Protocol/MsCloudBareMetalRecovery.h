@@ -1,38 +1,18 @@
-/*++
+/** @file MsCloudBareMetalRecovery.h
 
-Copyright (c) 2021 Microsoft Corporation
+This module implements CBMR UEFI protocol
 
-Module Name:
+Copyright (C) Microsoft Corporation. All rights reserved.
+SPDX-License-Identifier: BSD-2-Clause-Patent
 
-    cbmr.h
+**/
+#ifndef _MS_CLOUD_BARE_METAL_RECOVERY__H_
+#define _MS_CLOUD_BARE_METAL_RECOVERY__H_
 
-Abstract:
 
-    This module implements CBMR UEFI protocol
-
-Author:
-
-    Vineel Kovvuri (vineelko) 24-May-2021
-
-Environment:
-
-    UEFI mode only.
-
---*/
-
-#ifndef _CBMR_H_
-#define _CBMR_H_
-
-#define EFI_MS_CBMR_PROTOCOL_GUID                          \
-    {                                                      \
-        0x887481f5, 0xfa49, 0x4f65,                        \
-        {                                                  \
-            0xb0, 0x3c, 0x55, 0x1d, 0xb5, 0x3c, 0x8c, 0x23 \
-        }                                                  \
-    }
 #define EFI_MS_CBMR_PROTOCOL_REVISION 0x0000000000010000
-
 typedef struct _EFI_MS_CBMR_PROTOCOL EFI_MS_CBMR_PROTOCOL, *PEFI_MS_CBMR_PROTOCOL;
+
 
 //
 // Error Data
@@ -309,4 +289,4 @@ typedef struct _EFI_MS_CBMR_PROTOCOL {
 
 extern EFI_GUID gEfiMsCbmrProtocolGuid;
 
-#endif
+#endif // _MS_CLOUD_BARE_METAL_RECOVERY__H_

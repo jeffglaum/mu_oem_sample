@@ -1,0 +1,36 @@
+## @file MsCbmrSampleShellApp.inf
+#
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#  cBMR Process Initiation Sample Shell Application
+##
+
+[Defines]
+  INF_VERSION                    = 1.25
+  BASE_NAME                      = CbmrSampleShellApp
+  FILE_GUID                      = B66C3996-C4F7-48A2-A9E8-F5CBA0A88BD0
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CbmrSampleShellAppEntry
+
+[Sources]
+  MsCbmrSampleShellApp.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+  OemPkg/OemPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  UefiApplicationEntryPoint
+  UefiLib
+  DebugLib
+  ShellLib
+  MsCbmrProcessSampleLib
+
+[Protocols]
+  gEfiShellParametersProtocolGuid
+

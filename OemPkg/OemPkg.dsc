@@ -81,7 +81,7 @@
 
   RngLib|MdePkg/Library/BaseRngLib/BaseRngLib.inf
   PlatformPKProtectionLib|SecurityPkg/Library/PlatformPKProtectionLibVarPolicy/PlatformPKProtectionLibVarPolicy.inf
-
+  
 [LibraryClasses.IA32]
   MsUiThemeLib|MsGraphicsPkg/Library/MsUiThemeLib/Pei/MsUiThemeLib.inf
 
