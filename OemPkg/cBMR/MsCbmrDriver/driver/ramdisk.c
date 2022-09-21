@@ -28,9 +28,9 @@
 #define TWO_MEGABYTES      (2 * 1024 * 1024)
 
 static EFI_GUID RamdiskDiskGuid =
-    {0x7c7c7fda, 0x200e, 0x4074, 0x93, 0x8f, 0xc4, 0x00, 0xbd, 0x26, 0x67, 0xc3};
+    {0x7c7c7fda, 0x200e, 0x4074, { 0x93, 0x8f, 0xc4, 0x00, 0xbd, 0x26, 0x67, 0xc3 }};
 static EFI_GUID RamdiskPartitionEntryGuid =
-    {0x1fac5d39, 0xfea3, 0x4669, 0xa9, 0x7c, 0x31, 0x37, 0x68, 0xd1, 0xd7, 0x2a};
+    {0x1fac5d39, 0xfea3, 0x4669, { 0xa9, 0x7c, 0x31, 0x37, 0x68, 0xd1, 0xd7, 0x2a }};
 
 //
 // Structs
@@ -150,6 +150,7 @@ static DWORD GetFATSizeSectors(DWORD DskSize,
                                DWORD BytesPerSect);
 static DWORD GetVolumeID(void);
 
+
 //
 // Interfaces
 //
@@ -161,7 +162,7 @@ EFI_STATUS EFIAPI RamdiskInit(_In_ UINTN RamdiskSize,
     RAMDISK_CONTEXT* RetRamdiskContext = NULL;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RamdiskContext is NULL");
+        DBG_ERROR("RamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -178,7 +179,7 @@ EFI_STATUS EFIAPI RamdiskInit(_In_ UINTN RamdiskSize,
     RetRamdiskContext = AllocateZeroPool(sizeof(RAMDISK_CONTEXT));
     if (RetRamdiskContext == NULL) {
         Status = EFI_OUT_OF_RESOURCES;
-        DBG_ERROR("Failed to allocate ramdisk context");
+        DBG_ERROR("Failed to allocate ramdisk context", NULL);
         goto Exit;
     }
 
@@ -262,13 +263,13 @@ EFI_STATUS EFIAPI RamdiskFree(_Inout_ RAMDISK_CONTEXT* RamdiskContext)
     EFI_STATUS EfiStatusTemp;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -300,13 +301,13 @@ EFI_STATUS EFIAPI RamdiskRegister(_Inout_ RAMDISK_CONTEXT* RamdiskContext)
     EFI_DEVICE_PATH_TO_TEXT_PROTOCOL* DevicePathToTextIf = NULL;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -337,7 +338,7 @@ EFI_STATUS EFIAPI RamdiskRegister(_Inout_ RAMDISK_CONTEXT* RamdiskContext)
         FALSE);
 
     if (RamdiskDevicePath == NULL) {
-        DBG_ERROR("ConvertDevicePathToText() returned NULL string");
+        DBG_ERROR("ConvertDevicePathToText() returned NULL string", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -360,19 +361,19 @@ EFI_STATUS EFIAPI RamdiskUnregister(_Inout_ RAMDISK_CONTEXT* RamdiskContext)
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (!RamdiskContext->Registered) {
-        DBG_ERROR("Ramdisk has not been registered");
+        DBG_ERROR("Ramdisk has not been registered", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -395,25 +396,25 @@ EFI_STATUS EFIAPI RamdiskRead(_In_ RAMDISK_CONTEXT* RamdiskContext,
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (Buffer == NULL) {
-        DBG_ERROR("Buffer is NULL");
+        DBG_ERROR("Buffer is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (Length == 0) {
-        DBG_ERROR("Length is 0");
+        DBG_ERROR("Length is 0", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -446,25 +447,25 @@ EFI_STATUS EFIAPI RamdiskWrite(_Inout_ RAMDISK_CONTEXT* RamdiskContext,
     UINTN FinalOffset = 0;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (Data == NULL) {
-        DBG_ERROR("Data is NULL");
+        DBG_ERROR("Data is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (Length == 0) {
-        DBG_ERROR("Length is 0");
+        DBG_ERROR("Length is 0", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -497,6 +498,39 @@ Exit:
     return Status;
 }
 
+
+INTN
+StrniCmp (
+  IN CONST CHAR16  *Source,
+  IN CONST CHAR16  *Target,
+  IN UINTN   Count)
+{
+  INTN    Result = 0;
+  CHAR16  S, T;
+
+#define TO_UPPER(v)   if (v >= 'a' && v <= 'z') { v = v - 'a' + 'A'; }
+
+  while (Count-- > 0) {
+
+    S = *(Source++);
+    TO_UPPER(S);
+
+    T = *(Target++);
+    TO_UPPER(T);
+
+    Result = (INTN)S - (INTN)T;
+    if (Result != 0) {
+      return Result;
+    }
+
+    if (S == 0x0000 || T == 0x0000) {
+      break;
+    }
+  }
+
+  return 0;
+}
+
 EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
 {
     EFI_STATUS Status = EFI_SUCCESS;
@@ -514,19 +548,19 @@ EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
     UINTN HandleCount = 0;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk has not been initialized");
+        DBG_ERROR("Ramdisk has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (!RamdiskContext->Registered) {
-        DBG_ERROR("Ramdisk has not been registered");
+        DBG_ERROR("Ramdisk has not been registered", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -586,7 +620,7 @@ EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
         if (StrniCmp(RamdiskContext->DevicePathString,
                      DevicePath,
                      StrLen(RamdiskContext->DevicePathString)) == 0) {
-            DBG_INFO("Matched device path!");
+            DBG_INFO("Matched device path!", NULL);
             RamdiskContext->SfsDevicePath = DevicePathIf;
 
             FreePool(DevicePath);
@@ -609,7 +643,7 @@ EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
     }
 
     if (SimpleFs == NULL) {
-        DBG_ERROR("Unable to find Simple File System for ramdisk");
+        DBG_ERROR("Unable to find Simple File System for ramdisk", NULL);
         goto Exit;
     }
 
@@ -641,7 +675,7 @@ EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
 
     FilePathDevicePath = AllocateZeroPool(FilePathDevicePathSize);
     if (FilePathDevicePath == NULL) {
-        DBG_ERROR("Unable to allocate memory for device path");
+        DBG_ERROR("Unable to allocate memory for device path", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -691,7 +725,7 @@ EFI_STATUS EFIAPI RamdiskBoot(_In_ RAMDISK_CONTEXT* RamdiskContext)
     }
 
     DBG_INFO(
-        "About to ram boot. closing the debug module, no more prints here after from CBMR driver!");
+        "About to ram boot. closing the debug module, no more prints here after from CBMR driver!", NULL);
     DebugClose(); // To flush debug log file buffers
 
     Status = gBS->StartImage(BootmgrHandle, 0, NULL);
@@ -715,19 +749,19 @@ EFI_STATUS EFIAPI RamdiskGetSectorCount(_In_ const RAMDISK_CONTEXT* RamdiskConte
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RetRamdiskContext is NULL");
+        DBG_ERROR("RetRamdiskContext is NULL", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk not yet initialized");
+        DBG_ERROR("Ramdisk not yet initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (SectorCount == NULL) {
-        DBG_ERROR("SectorCount is NULL");
+        DBG_ERROR("SectorCount is NULL", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -744,19 +778,19 @@ EFI_STATUS EFIAPI RamdiskGetSectorSize(_In_ const RAMDISK_CONTEXT* RamdiskContex
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RamdiskContext is NULL");
+        DBG_ERROR("RamdiskContext is NULL", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk not yet initialized");
+        DBG_ERROR("Ramdisk not yet initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (SectorSize == NULL) {
-        DBG_ERROR("SectorSize is NULL");
+        DBG_ERROR("SectorSize is NULL", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -810,13 +844,13 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
     ULONGLONG FatNeeded, ClusterCount;
 
     if (RamdiskContext == NULL) {
-        DBG_ERROR("RamdiskContext is NULL");
+        DBG_ERROR("RamdiskContext is NULL", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (!RamdiskContext->Initialized) {
-        DBG_ERROR("Ramdisk not yet initialized");
+        DBG_ERROR("Ramdisk not yet initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -906,7 +940,7 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
     //
 
     MbrGpt->PartitionEntry[0].LastLba = MbrGpt->GptHeader.LastLba;
-    MbrGpt->PartitionEntry[0].AttributeFlags;
+    MbrGpt->PartitionEntry[0].AttributeFlags = 0;                                                // BUG?    What attributes are needed?   Original code did not assign a value.
 
     Status = CopyMemS(&MbrGpt->PartitionEntry[0].ArrPartitionName,
                       sizeof(MbrGpt->PartitionEntry[0].ArrPartitionName),
@@ -1140,7 +1174,7 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
 
     if (ClusterCount > 0x0FFFFFFF) {
         DBG_ERROR(
-            "This drive has more than 2^28 clusters, try to specify a larger cluster size or use the default");
+            "This drive has more than 2^28 clusters, try to specify a larger cluster size or use the default", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -1151,7 +1185,7 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
 
     if (ClusterCount < 65536) {
         DBG_ERROR(
-            "FAT32 must have at least 65536 clusters, try to specify a smaller cluster size or use the default");
+            "FAT32 must have at least 65536 clusters, try to specify a smaller cluster size or use the default", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -1166,12 +1200,12 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
     FatNeeded += (SectorSize - 1);
     FatNeeded /= SectorSize;
     if (FatNeeded > FatSize) {
-        DBG_ERROR("This drive is too big for large FAT32 format");
+        DBG_ERROR("This drive is too big for large FAT32 format", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
-    DBG_INFO("Ready to format volume");
+    DBG_INFO("Ready to format volume", NULL);
     DBG_INFO("Volume sector count : %u sectors", TotalSectors);
     DBG_INFO("Cluster size %d bytes, %d bytes per sector",
              SectorsPerCluster * SectorSize,
@@ -1221,7 +1255,7 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
         }
     }
 
-    DBG_INFO("Initializing reserved sectors and FATs...");
+    DBG_INFO("Initializing reserved sectors and FATs...", NULL);
 
     //
     // Now we should write the boot sector and fsinfo twice, once at 0 and once at the backup boot
@@ -1330,8 +1364,8 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
     VolumeLabelEntry->CrtDate = 0;
     VolumeLabelEntry->LstAccDate = 0;
     VolumeLabelEntry->FstClusHI = 0;
-    VolumeLabelEntry->WrtTime; // TODO
-    VolumeLabelEntry->WrtDate; // TODO
+    VolumeLabelEntry->WrtTime = 0;                                                // BUG?    What value is needed?   Original code did not assign a value.    // TODO
+    VolumeLabelEntry->WrtDate = 0;                                                // BUG?    What value is needed?   Original code did not assign a value.    // TODO
     VolumeLabelEntry->FstClusLO = 0;
     VolumeLabelEntry->FileSize = 0;
 
@@ -1364,7 +1398,7 @@ EFI_STATUS EFIAPI RamdiskInitializeSingleFat32Volume(_Inout_ RAMDISK_CONTEXT* Ra
     // it for us if not found, so we should be ok.
     //
 
-    DBG_INFO("Format completed.");
+    DBG_INFO("Format completed.", NULL);
 
 Exit:
 
@@ -1397,7 +1431,7 @@ static EFI_STATUS EFIAPI RamdiskLocateProtocol(VOID)
                 Status);
             gspRamDiskProtocol = NULL;
         } else {
-            DBG_INFO("Located ramdisk protocol");
+            DBG_INFO("Located ramdisk protocol", NULL);
         }
     }
 

@@ -25,9 +25,9 @@ typedef struct _CBMR_DRIVER_VERSION {
     UINT8 Minor;
 } CBMR_DRIVER_VERSION, *PCBMR_DRIVER_VERSION;
 
-#define EFI_MS_CBMR_VARIABLES_INTERNAL_GUID                                        \
-    {                                                                              \
-        0xCA787F2E, 0x4D68, 0x4883, 0xB9, 0x9E, 0x7F, 0xB1, 0x2E, 0xB3, 0x49, 0xCD \
+#define EFI_MS_CBMR_VARIABLES_INTERNAL_GUID                                            \
+    {                                                                                  \
+        0xCA787F2E, 0x4D68, 0x4883, { 0xB9, 0x9E, 0x7F, 0xB1, 0x2E, 0xB3, 0x49, 0xCD } \
     }
 
 //
@@ -58,7 +58,12 @@ typedef struct _SOFTWARE_INVENTORY_INFO {
 //
 
 typedef struct _EFI_MS_CBMR_PROTOCOL_INTERNAL {
-    EFI_MS_CBMR_PROTOCOL;
+////EFI_MS_CBMR_PROTOCOL;
+    UINT64 Revision;
+    EFI_MS_CBMR_CONFIGURE Configure;
+    EFI_MS_CBMR_GET_DATA GetData;
+    EFI_MS_CBMR_START Start;
+    EFI_MS_CBMR_CLOSE Close;
 
     //
     // CBMR application progress call back to report more detailed info of the

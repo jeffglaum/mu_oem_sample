@@ -2,7 +2,9 @@
 // Global includes
 //
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include <strsafe.h>
+#endif
 
 //
 // Local includes
@@ -27,17 +29,17 @@
 #define FIND_XXXXX_FILE_BUFFER_SIZE (sizeof(EFI_FILE_INFO) + MAX_FILE_NAME_LEN)
 
 #ifdef UEFI_BUILD_SYSTEM
-EFI_GUID gEfiPartitionRecordGuid = {0xfe2555be,
-                                    0xd716,
-                                    0x4686,
-                                    0xb9,
-                                    0xd0,
-                                    0x79,
-                                    0xdb,
-                                    0x59,
-                                    0x21,
-                                    0xb7,
-                                    0x0d}; // EFI_PARTITION_RECORD_GUID
+EFI_GUID gEfiPartitionRecordGuid = { 0xfe2555be,
+                                     0xd716,
+                                     0x4686,
+                                     { 0xb9,
+                                       0xd0,
+                                       0x79,
+                                       0xdb,
+                                       0x59,
+                                       0x21,
+                                       0xb7,
+                                       0x0d } }; // EFI_PARTITION_RECORD_GUID
 #endif
 
 //
@@ -339,7 +341,7 @@ EFI_STATUS EFIAPI FileGetInfo(_In_ EFI_FILE_PROTOCOL* EfiFileProtocol,
 
     Buffer = AllocateZeroPool(BufferSize);
     if (Buffer == NULL) {
-        DBG_ERROR("Unable to allocate memory");
+        DBG_ERROR("Unable to allocate memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -375,7 +377,7 @@ EFI_STATUS EFIAPI FileGetFileSystemInfo(_In_ EFI_FILE_PROTOCOL* EfiFileProtocol,
 
     Buffer = AllocateZeroPool(BufferSize);
     if (Buffer == NULL) {
-        DBG_ERROR("Unable to allocate memory");
+        DBG_ERROR("Unable to allocate memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -801,13 +803,13 @@ EFI_STATUS EFIAPI FileGetDirEntriesEx(_In_ EFI_FILE_PROTOCOL* Directory,
     }
 
     if (Position > Offset) {
-        DBG_ERROR("No more directory entries");
+        DBG_ERROR("No more directory entries", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (Position != Offset) {
-        DBG_ERROR("Position is not at directory entry boundary");
+        DBG_ERROR("Position is not at directory entry boundary", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -1203,7 +1205,7 @@ Exit:
 
     if (EFI_ERROR(Status)) {
         if (Status == EFI_NOT_FOUND) {
-            DBG_ERROR("No volumes found");
+            DBG_ERROR("No volumes found", NULL);
         }
 
         if (RootFs != NULL) {
@@ -1308,7 +1310,7 @@ EFI_STATUS EFIAPI FileLocateAndOpen(_In_z_ CHAR16* FileName,
                            VolumeLabel ? VolumeLabel : L"<empty>",
                            FilePath);
     if (EFI_ERROR(Status)) {
-        DBG_ERROR("StringPrintfW() failed");
+        DBG_ERROR("StringPrintfW() failed", NULL);
         goto Exit;
     }
 
@@ -1503,7 +1505,7 @@ EFI_STATUS EFIAPI FileDuplicate(_In_ EFI_FILE_PROTOCOL* SourceFile,
 
     if (SourceFile == NULL || PartitionName == NULL || DestinationFilePath == NULL ||
         DestinationFile == NULL) {
-        DBG_ERROR("Invalid parameter");
+        DBG_ERROR("Invalid parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -1551,7 +1553,7 @@ EFI_STATUS EFIAPI FileDuplicate(_In_ EFI_FILE_PROTOCOL* SourceFile,
 
     ReadBuffer = AllocatePool(DEFAULT_READ_BUFFER_SIZE);
     if (ReadBuffer == NULL) {
-        DBG_ERROR("Out of memory");
+        DBG_ERROR("Out of memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -1755,7 +1757,7 @@ static EFI_STATUS FileCreateDevicePathFromString(_In_z_ CHAR16* FileName,
 
     FilePathDevicePath = AllocateZeroPool(FilePathDevicePathSize);
     if (FilePathDevicePath == NULL) {
-        DBG_ERROR("Unable to allocate memory for device path");
+        DBG_ERROR("Unable to allocate memory for device path", NULL);
         return EFI_OUT_OF_RESOURCES;
     }
 
@@ -1953,7 +1955,7 @@ static EFI_STATUS FileCopyToFile(_In_ EFI_FILE_PROTOCOL* SourceFile,
 
     Buffer = AllocateZeroPool(READ_SIZE);
     if (Buffer == NULL) {
-        DBG_ERROR("Unable to allocate memory");
+        DBG_ERROR("Unable to allocate memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }

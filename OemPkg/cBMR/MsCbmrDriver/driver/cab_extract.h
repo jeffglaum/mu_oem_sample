@@ -14,4 +14,4 @@ EFI_STATUS EFIAPI CabExtractFiles(_In_ CAB_EXTRACT_CONTEXT* Context,
                                   _In_z_ CHAR16* PartitionName,
                                   _In_z_ CHAR16* DestinationDirectory);
 
-#endif _CAB_EXTRACT_H_
+#endif // _CAB_EXTRACT_H_

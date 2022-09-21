@@ -19,4 +19,4 @@ EFI_STATUS EFIAPI WimExtractFileIntoDestination(_In_ WIM_CONTEXT* Context,
                                                 _In_z_ CHAR16* DestinationFilePath);
 EFI_STATUS EFIAPI WimExtractCbmrNode(_In_ WIM_CONTEXT* Context, _Outptr_ XmlNode2** CbmrNode);
 
-#endif _WIM_H_
+#endif // _WIM_H_

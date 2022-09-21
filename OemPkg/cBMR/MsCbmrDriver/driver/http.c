@@ -26,7 +26,9 @@ Environment:
 //
 
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 
 //
 // Local includes
@@ -97,52 +99,52 @@ typedef struct _HTTP_RESPONSE {
     HTTP_REQUEST* Request;
 } HTTP_RESPONSE, *PHTTP_RESPONSE;
 
-// clang-format off
-static ENUM_TO_STRING HttpStatusMap[] = {
-    {HTTP_STATUS_UNSUPPORTED_STATUS,                STRINGIFY(HTTP_STATUS_UNSUPPORTED_STATUS)},
-    {HTTP_STATUS_100_CONTINUE,                      STRINGIFY(HTTP_STATUS_100_CONTINUE)},
-    {HTTP_STATUS_101_SWITCHING_PROTOCOLS,           STRINGIFY(HTTP_STATUS_101_SWITCHING_PROTOCOLS)},
-    {HTTP_STATUS_200_OK,                            STRINGIFY(HTTP_STATUS_200_OK)},
-    {HTTP_STATUS_201_CREATED,                       STRINGIFY(HTTP_STATUS_201_CREATED)},
-    {HTTP_STATUS_202_ACCEPTED,                      STRINGIFY(HTTP_STATUS_202_ACCEPTED)},
-    {HTTP_STATUS_203_NON_AUTHORITATIVE_INFORMATION, STRINGIFY(HTTP_STATUS_203_NON_AUTHORITATIVE_INFORMATION)},
-    {HTTP_STATUS_204_NO_CONTENT,                    STRINGIFY(HTTP_STATUS_204_NO_CONTENT)},
-    {HTTP_STATUS_205_RESET_CONTENT,                 STRINGIFY(HTTP_STATUS_205_RESET_CONTENT)},
-    {HTTP_STATUS_206_PARTIAL_CONTENT,               STRINGIFY(HTTP_STATUS_206_PARTIAL_CONTENT)},
-    {HTTP_STATUS_300_MULTIPLE_CHOICES,              STRINGIFY(HTTP_STATUS_300_MULTIPLE_CHOICES)},
-    {HTTP_STATUS_301_MOVED_PERMANENTLY,             STRINGIFY(HTTP_STATUS_301_MOVED_PERMANENTLY)},
-    {HTTP_STATUS_302_FOUND,                         STRINGIFY(HTTP_STATUS_302_FOUND)},
-    {HTTP_STATUS_303_SEE_OTHER,                     STRINGIFY(HTTP_STATUS_303_SEE_OTHER)},
-    {HTTP_STATUS_304_NOT_MODIFIED,                  STRINGIFY(HTTP_STATUS_304_NOT_MODIFIED)},
-    {HTTP_STATUS_305_USE_PROXY,                     STRINGIFY(HTTP_STATUS_305_USE_PROXY)},
-    {HTTP_STATUS_307_TEMPORARY_REDIRECT,            STRINGIFY(HTTP_STATUS_307_TEMPORARY_REDIRECT)},
-    {HTTP_STATUS_400_BAD_REQUEST,                   STRINGIFY(HTTP_STATUS_400_BAD_REQUEST)},
-    {HTTP_STATUS_401_UNAUTHORIZED,                  STRINGIFY(HTTP_STATUS_401_UNAUTHORIZED)},
-    {HTTP_STATUS_402_PAYMENT_REQUIRED,              STRINGIFY(HTTP_STATUS_402_PAYMENT_REQUIRED)},
-    {HTTP_STATUS_403_FORBIDDEN,                     STRINGIFY(HTTP_STATUS_403_FORBIDDEN)},
-    {HTTP_STATUS_404_NOT_FOUND,                     STRINGIFY(HTTP_STATUS_404_NOT_FOUND)},
-    {HTTP_STATUS_405_METHOD_NOT_ALLOWED,            STRINGIFY(HTTP_STATUS_405_METHOD_NOT_ALLOWED)},
-    {HTTP_STATUS_406_NOT_ACCEPTABLE,                STRINGIFY(HTTP_STATUS_406_NOT_ACCEPTABLE)},
-    {HTTP_STATUS_407_PROXY_AUTHENTICATION_REQUIRED, STRINGIFY(HTTP_STATUS_407_PROXY_AUTHENTICATION_REQUIRED)},
-    {HTTP_STATUS_408_REQUEST_TIME_OUT,              STRINGIFY(HTTP_STATUS_408_REQUEST_TIME_OUT)},
-    {HTTP_STATUS_409_CONFLICT,                      STRINGIFY(HTTP_STATUS_409_CONFLICT)},
-    {HTTP_STATUS_410_GONE,                          STRINGIFY(HTTP_STATUS_410_GONE)},
-    {HTTP_STATUS_411_LENGTH_REQUIRED,               STRINGIFY(HTTP_STATUS_411_LENGTH_REQUIRED)},
-    {HTTP_STATUS_412_PRECONDITION_FAILED,           STRINGIFY(HTTP_STATUS_412_PRECONDITION_FAILED)},
-    {HTTP_STATUS_413_REQUEST_ENTITY_TOO_LARGE,      STRINGIFY(HTTP_STATUS_413_REQUEST_ENTITY_TOO_LARGE)},
-    {HTTP_STATUS_414_REQUEST_URI_TOO_LARGE,         STRINGIFY(HTTP_STATUS_414_REQUEST_URI_TOO_LARGE)},
-    {HTTP_STATUS_415_UNSUPPORTED_MEDIA_TYPE,        STRINGIFY(HTTP_STATUS_415_UNSUPPORTED_MEDIA_TYPE)},
-    {HTTP_STATUS_416_REQUESTED_RANGE_NOT_SATISFIED, STRINGIFY(HTTP_STATUS_416_REQUESTED_RANGE_NOT_SATISFIED)},
-    {HTTP_STATUS_417_EXPECTATION_FAILED,            STRINGIFY(HTTP_STATUS_417_EXPECTATION_FAILED)},
-    {HTTP_STATUS_500_INTERNAL_SERVER_ERROR,         STRINGIFY(HTTP_STATUS_500_INTERNAL_SERVER_ERROR)},
-    {HTTP_STATUS_501_NOT_IMPLEMENTED,               STRINGIFY(HTTP_STATUS_501_NOT_IMPLEMENTED)},
-    {HTTP_STATUS_502_BAD_GATEWAY,                   STRINGIFY(HTTP_STATUS_502_BAD_GATEWAY)},
-    {HTTP_STATUS_503_SERVICE_UNAVAILABLE,           STRINGIFY(HTTP_STATUS_503_SERVICE_UNAVAILABLE)},
-    {HTTP_STATUS_504_GATEWAY_TIME_OUT,              STRINGIFY(HTTP_STATUS_504_GATEWAY_TIME_OUT)},
-    {HTTP_STATUS_505_HTTP_VERSION_NOT_SUPPORTED,    STRINGIFY(HTTP_STATUS_505_HTTP_VERSION_NOT_SUPPORTED)},
-    {HTTP_STATUS_308_PERMANENT_REDIRECT,            STRINGIFY(HTTP_STATUS_308_PERMANENT_REDIRECT)},
-};
-// clang-format on
+// // clang-format off
+// static ENUM_TO_STRING HttpStatusMap[] = {
+//     {HTTP_STATUS_UNSUPPORTED_STATUS,                STRINGIFY(HTTP_STATUS_UNSUPPORTED_STATUS)},
+//     {HTTP_STATUS_100_CONTINUE,                      STRINGIFY(HTTP_STATUS_100_CONTINUE)},
+//     {HTTP_STATUS_101_SWITCHING_PROTOCOLS,           STRINGIFY(HTTP_STATUS_101_SWITCHING_PROTOCOLS)},
+//     {HTTP_STATUS_200_OK,                            STRINGIFY(HTTP_STATUS_200_OK)},
+//     {HTTP_STATUS_201_CREATED,                       STRINGIFY(HTTP_STATUS_201_CREATED)},
+//     {HTTP_STATUS_202_ACCEPTED,                      STRINGIFY(HTTP_STATUS_202_ACCEPTED)},
+//     {HTTP_STATUS_203_NON_AUTHORITATIVE_INFORMATION, STRINGIFY(HTTP_STATUS_203_NON_AUTHORITATIVE_INFORMATION)},
+//     {HTTP_STATUS_204_NO_CONTENT,                    STRINGIFY(HTTP_STATUS_204_NO_CONTENT)},
+//     {HTTP_STATUS_205_RESET_CONTENT,                 STRINGIFY(HTTP_STATUS_205_RESET_CONTENT)},
+//     {HTTP_STATUS_206_PARTIAL_CONTENT,               STRINGIFY(HTTP_STATUS_206_PARTIAL_CONTENT)},
+//     {HTTP_STATUS_300_MULTIPLE_CHOICES,              STRINGIFY(HTTP_STATUS_300_MULTIPLE_CHOICES)},
+//     {HTTP_STATUS_301_MOVED_PERMANENTLY,             STRINGIFY(HTTP_STATUS_301_MOVED_PERMANENTLY)},
+//     {HTTP_STATUS_302_FOUND,                         STRINGIFY(HTTP_STATUS_302_FOUND)},
+//     {HTTP_STATUS_303_SEE_OTHER,                     STRINGIFY(HTTP_STATUS_303_SEE_OTHER)},
+//     {HTTP_STATUS_304_NOT_MODIFIED,                  STRINGIFY(HTTP_STATUS_304_NOT_MODIFIED)},
+//     {HTTP_STATUS_305_USE_PROXY,                     STRINGIFY(HTTP_STATUS_305_USE_PROXY)},
+//     {HTTP_STATUS_307_TEMPORARY_REDIRECT,            STRINGIFY(HTTP_STATUS_307_TEMPORARY_REDIRECT)},
+//     {HTTP_STATUS_400_BAD_REQUEST,                   STRINGIFY(HTTP_STATUS_400_BAD_REQUEST)},
+//     {HTTP_STATUS_401_UNAUTHORIZED,                  STRINGIFY(HTTP_STATUS_401_UNAUTHORIZED)},
+//     {HTTP_STATUS_402_PAYMENT_REQUIRED,              STRINGIFY(HTTP_STATUS_402_PAYMENT_REQUIRED)},
+//     {HTTP_STATUS_403_FORBIDDEN,                     STRINGIFY(HTTP_STATUS_403_FORBIDDEN)},
+//     {HTTP_STATUS_404_NOT_FOUND,                     STRINGIFY(HTTP_STATUS_404_NOT_FOUND)},
+//     {HTTP_STATUS_405_METHOD_NOT_ALLOWED,            STRINGIFY(HTTP_STATUS_405_METHOD_NOT_ALLOWED)},
+//     {HTTP_STATUS_406_NOT_ACCEPTABLE,                STRINGIFY(HTTP_STATUS_406_NOT_ACCEPTABLE)},
+//     {HTTP_STATUS_407_PROXY_AUTHENTICATION_REQUIRED, STRINGIFY(HTTP_STATUS_407_PROXY_AUTHENTICATION_REQUIRED)},
+//     {HTTP_STATUS_408_REQUEST_TIME_OUT,              STRINGIFY(HTTP_STATUS_408_REQUEST_TIME_OUT)},
+//     {HTTP_STATUS_409_CONFLICT,                      STRINGIFY(HTTP_STATUS_409_CONFLICT)},
+//     {HTTP_STATUS_410_GONE,                          STRINGIFY(HTTP_STATUS_410_GONE)},
+//     {HTTP_STATUS_411_LENGTH_REQUIRED,               STRINGIFY(HTTP_STATUS_411_LENGTH_REQUIRED)},
+//     {HTTP_STATUS_412_PRECONDITION_FAILED,           STRINGIFY(HTTP_STATUS_412_PRECONDITION_FAILED)},
+//     {HTTP_STATUS_413_REQUEST_ENTITY_TOO_LARGE,      STRINGIFY(HTTP_STATUS_413_REQUEST_ENTITY_TOO_LARGE)},
+//     {HTTP_STATUS_414_REQUEST_URI_TOO_LARGE,         STRINGIFY(HTTP_STATUS_414_REQUEST_URI_TOO_LARGE)},
+//     {HTTP_STATUS_415_UNSUPPORTED_MEDIA_TYPE,        STRINGIFY(HTTP_STATUS_415_UNSUPPORTED_MEDIA_TYPE)},
+//     {HTTP_STATUS_416_REQUESTED_RANGE_NOT_SATISFIED, STRINGIFY(HTTP_STATUS_416_REQUESTED_RANGE_NOT_SATISFIED)},
+//     {HTTP_STATUS_417_EXPECTATION_FAILED,            STRINGIFY(HTTP_STATUS_417_EXPECTATION_FAILED)},
+//     {HTTP_STATUS_500_INTERNAL_SERVER_ERROR,         STRINGIFY(HTTP_STATUS_500_INTERNAL_SERVER_ERROR)},
+//     {HTTP_STATUS_501_NOT_IMPLEMENTED,               STRINGIFY(HTTP_STATUS_501_NOT_IMPLEMENTED)},
+//     {HTTP_STATUS_502_BAD_GATEWAY,                   STRINGIFY(HTTP_STATUS_502_BAD_GATEWAY)},
+//     {HTTP_STATUS_503_SERVICE_UNAVAILABLE,           STRINGIFY(HTTP_STATUS_503_SERVICE_UNAVAILABLE)},
+//     {HTTP_STATUS_504_GATEWAY_TIME_OUT,              STRINGIFY(HTTP_STATUS_504_GATEWAY_TIME_OUT)},
+//     {HTTP_STATUS_505_HTTP_VERSION_NOT_SUPPORTED,    STRINGIFY(HTTP_STATUS_505_HTTP_VERSION_NOT_SUPPORTED)},
+//     {HTTP_STATUS_308_PERMANENT_REDIRECT,            STRINGIFY(HTTP_STATUS_308_PERMANENT_REDIRECT)},
+// };
+// // clang-format on
 
 //
 // Prototypes
@@ -212,7 +214,7 @@ static VOID EFIAPI HttpDumpHeaders(_In_ EFI_HTTP_MESSAGE* Message)
     if (Message->HeaderCount == 0)
         return;
 
-    DBG_INFO("HTTP Headers:");
+    DBG_INFO("HTTP Headers:", NULL);
     for (UINTN Index = 0; Index < Message->HeaderCount; Index++) {
         DBG_INFO("     %s: %s",
                  Message->Headers[Index].FieldName,
@@ -281,7 +283,7 @@ static EFI_STATUS EFIAPI HttpInit(_In_ PHTTP_CONTEXT Context)
     }
 #endif
 
-    Status = gBS->LocateProtocol(&gEfiHttpServiceBindingProtocolGuid, NULL, &ServiceBinding);
+    Status = gBS->LocateProtocol(&gEfiHttpServiceBindingProtocolGuid, NULL, (void**)&ServiceBinding);
     if (EFI_ERROR(Status)) {
         DBG_ERROR("Error 0x%zx", Status);
         goto Exit;
@@ -295,7 +297,7 @@ static EFI_STATUS EFIAPI HttpInit(_In_ PHTTP_CONTEXT Context)
 
     Status = gBS->OpenProtocol(Handle,
                                &gEfiHttpProtocolGuid,
-                               &HttpProtocol,
+                               (void**)&HttpProtocol,
                                gImageHandle,
                                NULL,
                                EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -338,7 +340,7 @@ EFI_STATUS EFIAPI HttpCreate(_Outptr_ HTTP_CONTEXT** Context)
     HTTP_CONTEXT* RetContext = NULL;
 
     if (Context == NULL) {
-        DBG_ERROR("Context is NULL");
+        DBG_ERROR("Context is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -347,7 +349,7 @@ EFI_STATUS EFIAPI HttpCreate(_Outptr_ HTTP_CONTEXT** Context)
     RetContext = AllocateZeroPool(sizeof(HTTP_CONTEXT));
     if (RetContext == NULL) {
         Status = EFI_OUT_OF_RESOURCES;
-        DBG_ERROR("Unable to allocate HTTP_CONTEXT structure");
+        DBG_ERROR("Unable to allocate HTTP_CONTEXT structure", NULL);
         goto Exit;
     }
 
@@ -370,7 +372,7 @@ EFI_STATUS EFIAPI HttpCreate(_Outptr_ HTTP_CONTEXT** Context)
         goto Exit;
     }
 
-    DBG_INFO("Configured Http module");
+    DBG_INFO("Configured Http module", NULL);
 
     *Context = RetContext;
     return Status;
@@ -461,20 +463,6 @@ Exit:
     return Status;
 }
 
-VOID EFIAPI HttpFreeHeaderFields(_In_ EFI_HTTP_HEADER* HeaderFields, _In_ UINTN FieldCount)
-{
-    if (HeaderFields == NULL) {
-        return;
-    }
-
-    for (UINTN Index = 0; Index < FieldCount; Index++) {
-        FreePool(HeaderFields[Index].FieldName);
-        FreePool(HeaderFields[Index].FieldValue);
-    }
-
-    FreePool(HeaderFields);
-}
-
 static EFI_STATUS EFIAPI HttpSendRequest(_In_ PHTTP_CONTEXT Context, _Inout_ PHTTP_REQUEST Request)
 {
     EFI_STATUS Status = EFI_SUCCESS;
@@ -501,7 +489,7 @@ static EFI_STATUS EFIAPI HttpSendRequest(_In_ PHTTP_CONTEXT Context, _Inout_ PHT
     if (EFI_ERROR(Status)) {
         DBG_ERROR("HttpPoll() failed 0x%zx", Status);
         if (!Request->CallbackTriggered) {
-            DBG_INFO("Cancelling the request");
+            DBG_INFO("Cancelling the request", NULL);
             Status = Context->Http->Cancel(Context->Http, &Request->Token);
             if (EFI_ERROR(Status)) {
                 DBG_ERROR("Cancel() failed 0x%zx Token Status = 0x%zx",
@@ -543,7 +531,7 @@ static EFI_STATUS EFIAPI HttpGetResponse(_Inout_ PHTTP_CONTEXT Context,
     if (EFI_ERROR(Status)) {
         DBG_ERROR("HttpPoll() failed 0x%zx", Status);
         if (!Response->CallbackTriggered) {
-            DBG_INFO("Cancelling the response");
+            DBG_INFO("Cancelling the response", NULL);
             Status = Context->Http->Cancel(Context->Http, &Response->Token);
             if (EFI_ERROR(Status)) {
                 DBG_ERROR("Cancel() failed 0x%zx Token Status = 0x%zx",
@@ -607,7 +595,7 @@ static EFI_STATUS HttpCreateRequestObject(_Inout_ PHTTP_CONTEXT Context,
     UNREFERENCED_PARAMETER(Context);
 
     if (Url == NULL) {
-        DBG_ERROR("Url is NULL");
+        DBG_ERROR("Url is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -615,7 +603,7 @@ static EFI_STATUS HttpCreateRequestObject(_Inout_ PHTTP_CONTEXT Context,
     RetRequest = AllocateZeroPool(sizeof(HTTP_REQUEST));
     if (RetRequest == NULL) {
         Status = EFI_OUT_OF_RESOURCES;
-        DBG_ERROR("AllocatePool() failed to allocate HTTP_REQUEST");
+        DBG_ERROR("AllocatePool() failed to allocate HTTP_REQUEST", NULL);
         goto Exit;
     }
 
@@ -673,7 +661,7 @@ static EFI_STATUS HttpCreateResponseObject(_Inout_ PHTTP_CONTEXT Context,
     RetResponse = AllocateZeroPool(sizeof(HTTP_RESPONSE));
     if (RetResponse == NULL) {
         Status = EFI_OUT_OF_RESOURCES;
-        DBG_ERROR("AllocatePool() failed to allocate HTTP_RESPONSE");
+        DBG_ERROR("AllocatePool() failed to allocate HTTP_RESPONSE", NULL);
         goto Exit;
     }
 

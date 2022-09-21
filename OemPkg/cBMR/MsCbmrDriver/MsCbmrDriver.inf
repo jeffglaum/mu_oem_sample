@@ -1,0 +1,104 @@
+## @file 
+#
+#
+# Copyright (C) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MsCbmrDriver
+  FILE_GUID                      = AF60F6F1-401D-4AE9-955B-703CFDBA2375
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = MsCbmrDriverEntry
+
+[Sources]
+  ### driver\blmissing.c
+  ### driver\cab_extract.c
+  driver\cbmr_core.c
+  driver\cbmr_driver.c
+  driver\cbmr_protocols.c
+  driver\dcat.c
+  driver\error.c
+  driver\http.c
+  driver\network_common.c
+  driver\protocols.c
+  driver\ramdisk.c
+  driver\tls.c
+  driver\wim.c
+  driver\string_helper.c
+
+  common\buffer.c
+  common\cbmr_config.c
+  common\cbmrdebug.c
+  common\edk2compat.c
+  common\file.c
+  ### common\guids.c
+  common\safe_arithmetic.c
+  common\utils.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  NetworkPkg/NetworkPkg.dec
+  PcBdsPkg/PcBdsPkg.dec
+  OemPkg/OemPkg.dec
+  XmlSupportPkg/XmlSupportPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  DebugLib
+  UefiBootServicesTableLib
+  MemoryAllocationLib
+  UefiRuntimeServicesTableLib
+  XmlTreeQueryLib
+  HttpLib
+
+[Guids]
+  gEfiHashAlgorithmSha256Guid
+  gEfiBootManagerPolicyConnectAllGuid
+  gEfiFileInfoGuid
+  gEfiFileSystemVolumeLabelInfoIdGuid
+  gEfiCertX509Guid
+
+[Protocols]
+  gEfiDevicePathFromTextProtocolGuid
+  gEfiDevicePathProtocolGuid
+  gEfiDevicePathToTextProtocolGuid
+  gEfiDevicePathUtilitiesProtocolGuid
+  gEfiDriverBindingProtocolGuid
+  gEfiHttpProtocolGuid
+  gEfiHttpServiceBindingProtocolGuid
+  gEfiIp4Config2ProtocolGuid
+  gEfiIp4ProtocolGuid
+  gEfiIp4ServiceBindingProtocolGuid
+  gEfiLoadedImageProtocolGuid
+  gEfiSimpleFileSystemProtocolGuid
+  gEfiSimpleTextOutProtocolGuid
+  gEfiTcp4ProtocolGuid
+  gEfiTcp4ServiceBindingProtocolGuid
+  gEfiTlsProtocolGuid
+  gEfiTlsServiceBindingProtocolGuid
+  gEfiTlsConfigurationProtocolGuid
+  gEfiRamDiskProtocolGuid
+  gEfiEapProtocolGuid
+  gMsNetworkDelayProtocolGuid
+  gEfiWiFiProtocolGuid
+  gEfiWiFi2ProtocolGuid
+  gEfiBootManagerPolicyProtocolGuid
+  gEfiPartitionInfoProtocolGuid
+  gEfiBlockIoProtocolGuid
+  gEfiHash2ServiceBindingProtocolGuid
+  gEfiHash2ProtocolGuid
+
+
+[Pcd]
+
+[Depex]
+  TRUE
+
+[BuildOptions]
+  *_*_*_CC_FLAGS  = -DUEFI_BUILD_SYSTEM -D_ARM64_
+
+

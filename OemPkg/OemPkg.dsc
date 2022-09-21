@@ -82,6 +82,9 @@
   RngLib|MdePkg/Library/BaseRngLib/BaseRngLib.inf
   PlatformPKProtectionLib|SecurityPkg/Library/PlatformPKProtectionLibVarPolicy/PlatformPKProtectionLibVarPolicy.inf
 
+  HttpLib|NetworkPkg/Library/DxeHttpLib/DxeHttpLib.inf
+  XmlTreeQueryLib|XmlSupportPkg/Library/XmlTreeQueryLib/XmlTreeQueryLib.inf
+
 [LibraryClasses.IA32]
   MsUiThemeLib|MsGraphicsPkg/Library/MsUiThemeLib/Pei/MsUiThemeLib.inf
 
@@ -142,6 +145,7 @@
   OemPkg/Library/OemMfciLib/OemMfciLibPei.inf
   OemPkg/Library/OemMfciLib/OemMfciLibDxe.inf
   OemPkg/FrontpageButtonsVolumeUp/FrontpageButtonsVolumeUp.inf
+  OemPkg/cBMR/MsCbmrDriver/MsCbmrDriver.inf
 
 [Components.IA32]
   OemPkg/DeviceStatePei/DeviceStatePei.inf

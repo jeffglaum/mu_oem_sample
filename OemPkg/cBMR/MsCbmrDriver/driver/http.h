@@ -24,7 +24,6 @@ EFI_STATUS EFIAPI HttpIssueRequest(_In_ PHTTP_CONTEXT Context,
                                    _Outptr_ PHTTP_RESPONSE* Response);
 EFI_STATUS EFIAPI HttpGetNext(_In_ PHTTP_CONTEXT Context, _In_ PHTTP_RESPONSE Response);
 EFI_STATUS EFIAPI HttpFree(_In_ PHTTP_CONTEXT Context);
-VOID EFIAPI HttpFreeHeaderFields(_In_ EFI_HTTP_HEADER* HeaderFields, _In_ UINTN FieldCount);
 VOID EFIAPI HttpFreeResponse(_In_ PHTTP_CONTEXT Context, _In_ PHTTP_RESPONSE Response);
 UINTN EFIAPI HttpGetContentLength(_In_ PHTTP_RESPONSE Response);
 UINTN EFIAPI HttpGetChunkSize(_In_ PHTTP_RESPONSE Response);

@@ -6,7 +6,7 @@
 
 #define PROTO(ProtocolGUID, ProtocolGUIDStr)                                                 \
     {                                                                                        \
-        ProtocolGUID, {0}, (CHAR8*)ProtocolGUIDStr, NULL, NULL, NULL, EFI_INVALID_PARAMETER, \
+        ProtocolGUID, &NullGuid, (CHAR8*)ProtocolGUIDStr, NULL, NULL, NULL, EFI_INVALID_PARAMETER, \
     }
 
 #define SB_PROTO(ProtocolGUID, ProtocolGUIDStr, SbProtocolGUID, SbProtocolGUIDStr)              \

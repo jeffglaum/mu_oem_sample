@@ -338,14 +338,18 @@ static CHAR8* StringByIndex(_In_ CHAR8* StartAddrPtr, _In_ UINT8 StringIndex)
     }
 
     while (Index < StringIndex) {
+#ifndef UEFI_BUILD_SYSTEM
 #pragma prefast(push)
 #pragma prefast(disable : 26018)
 #pragma prefast(disable : 26007)
+#endif
         if (*StringPtr == 0 && *(StringPtr + 1) == 0) {
             DBG_ERROR("Structure terminator found while searching index %u", Index);
             return NULL;
         }
+#ifndef UEFI_BUILD_SYSTEM
 #pragma prefast(pop)
+#endif
 
         StringLength = AsciiStrLen(StringPtr) + 1;
         StringPtr += StringLength;
@@ -485,8 +489,9 @@ CHAR16* GetFileName(_In_ CHAR16* Path)
 
     for (UINTN i = Len - 1; i >= 0; i--) {
         if (Path[i] == L'/' || Path[i] == L'\\') {
-            CHAR16* Str = NULL;
-            StrDup(&Path[i + 1], &Str);
+            UINTN Sz = (StrLen(&Path[i + 1]) + 1) * 2;
+            CHAR16* Str = (CHAR16*)AllocateZeroPool(Sz);
+            StrCpyS (Str, Sz / 2, &Path[i + 1]);
             return Str;
         }
     }
@@ -503,8 +508,8 @@ EFI_INPUT_KEY GetCharNoEcho()
     EFI_INPUT_KEY Key;
     UINTN Index = 0;
 
-    gBS->WaitForEvent(1, &gSystemTable->ConIn->WaitForKey, &Index);
-    gSystemTable->ConIn->ReadKeyStroke(gSystemTable->ConIn, &Key);
+    gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &Index);
+    gST->ConIn->ReadKeyStroke(gST->ConIn, &Key);
     // DBG_INFO("ScanCode = %d UnicodeChar = %d", Key.ScanCode, Key.UnicodeChar);
     return Key;
 }

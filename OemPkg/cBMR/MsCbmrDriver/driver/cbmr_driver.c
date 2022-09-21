@@ -25,7 +25,9 @@ Environment:
 //
 
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 
 //
 // Local includes
@@ -38,10 +40,10 @@ Environment:
 // Prototypes
 //
 
-EFI_SYSTEM_TABLE* gSystemTable;
-EFI_BOOT_SERVICES *gBS, *gBootServices;
-EFI_RUNTIME_SERVICES *gRT, *gRuntimeServices;
+#ifndef UEFI_BUILD_SYSTEM
+EFI_SYSTEM_TABLE* gST;
 EFI_HANDLE* gImageHandle = NULL;
+#endif
 
 EFI_GUID gEfiMsCbmrProtocolGuid = EFI_MS_CBMR_PROTOCOL_GUID;
 
@@ -50,17 +52,17 @@ CbmrDriverExit(_In_ EFI_HANDLE ImageHandle);
 
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingSupported(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingSupported(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                            _In_ EFI_HANDLE ControllerHandle,
                            _In_ EFI_DEVICE_PATH_PROTOCOL* RemainingDevicePath);
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingStart(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingStart(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                        _In_ EFI_HANDLE ControllerHandle,
                        _In_ EFI_DEVICE_PATH_PROTOCOL* RemainingDevicePath);
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingStop(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingStop(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                       _In_ EFI_HANDLE ControllerHandle,
                       _In_ UINTN NumberOfChildren,
                       _In_ EFI_HANDLE* ChildHandleBuffer);
@@ -69,13 +71,13 @@ static EFI_STATUS EFIAPI IsDriverServiced(_Inout_ CBMR_SERVICING_INFO* Servicing
 static EFI_STATUS EFIAPI ClearServicingInfoVariable();
 static EFI_STATUS EFIAPI PerformServicingOperations(_In_ CBMR_SERVICING_INFO* ServicingInfo);
 
-static EFI_DRIVER_BINDING CbmrDriverBinding = {(EFI_DRIVER_BINDING_SUPPORTED)
-                                                   CbmrDriverBindingSupported,
-                                               (EFI_DRIVER_BINDING_START)CbmrDriverBindingStart,
-                                               (EFI_DRIVER_BINDING_STOP)CbmrDriverBindingStop,
-                                               1,
-                                               NULL,
-                                               NULL};
+static EFI_DRIVER_BINDING_PROTOCOL CbmrDriverBinding = {
+                                                         CbmrDriverBindingSupported,
+                                                         CbmrDriverBindingStart,
+                                                         CbmrDriverBindingStop,
+                                                         1,
+                                                         NULL,
+                                                         NULL};
 
 static EFI_MS_CBMR_PROTOCOL_INTERNAL CbmrProtocol = {
     .Revision = (UINT32)EFI_MS_CBMR_PROTOCOL_REVISION,
@@ -87,7 +89,7 @@ static EFI_MS_CBMR_PROTOCOL_INTERNAL CbmrProtocol = {
 
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingSupported(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingSupported(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                            _In_ EFI_HANDLE ControllerHandle,
                            _In_ EFI_DEVICE_PATH_PROTOCOL* RemainingDevicePath)
 /*++
@@ -119,7 +121,7 @@ Return Value:
 
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingStart(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingStart(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                        _In_ EFI_HANDLE ControllerHandle,
                        _In_ EFI_DEVICE_PATH_PROTOCOL* RemainingDevicePath)
 /*++
@@ -151,7 +153,7 @@ Return Value:
 
 EFI_STATUS
 EFIAPI
-CbmrDriverBindingStop(_In_ EFI_DRIVER_BINDING* This,
+CbmrDriverBindingStop(_In_ EFI_DRIVER_BINDING_PROTOCOL* This,
                       _In_ EFI_HANDLE ControllerHandle,
                       _In_ UINTN NumberOfChildren,
                       _In_ EFI_HANDLE* ChildHandleBuffer)
@@ -189,10 +191,10 @@ CbmrDriverInit(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 
+#ifdef UEFI_BUILD_SYSTEM
     gImageHandle = ImageHandle;
-    gSystemTable = SystemTable;
-    gBootServices = gBS = SystemTable->BootServices;
-    gRuntimeServices = gRT = SystemTable->RuntimeServices;
+    gST = SystemTable;
+#endif
 
     CbmrReadConfig(CBMR_CONFIG_DEBUG_SECTION);
 
@@ -213,7 +215,7 @@ CbmrDriverInit(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
 
 EFI_STATUS
 EFIAPI
-CbmrDriverEntry(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
+MsCbmrDriverEntry(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_LOADED_IMAGE* LoadedImage = NULL;
@@ -226,7 +228,7 @@ CbmrDriverEntry(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
         goto Exit;
     }
 
-    DBG_INFO("CbmrDriverInit() done");
+    DBG_INFO("CbmrDriverInit() done", NULL);
 
     Status = CbmrProtocolProbeAll();
     if (EFI_ERROR(Status)) {
@@ -246,7 +248,7 @@ CbmrDriverEntry(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
         return PerformServicingOperations(&ServicingInfo);
     } else {
         if (Status == EFI_NOT_FOUND) {
-            DBG_INFO("Servicing variable not set. Continue with driver initialization.");
+            DBG_INFO("Servicing variable not set. Continue with driver initialization.", NULL);
             Status = EFI_SUCCESS;
         } else {
             //
@@ -284,7 +286,7 @@ CbmrDriverEntry(_In_ EFI_HANDLE ImageHandle, _In_ EFI_SYSTEM_TABLE* SystemTable)
         goto Exit;
     }
 
-    DBG_INFO("Installing Protocols done");
+    DBG_INFO("Installing Protocols done", NULL);
 
 Exit:
     return Status;
@@ -315,7 +317,7 @@ CbmrDriverExit(_In_ EFI_HANDLE ImageHandle)
         Status = Internal->Close((PEFI_MS_CBMR_PROTOCOL)Internal);
     }
 
-    DBG_INFO("CbmrDriverExit() done");
+    DBG_INFO("CbmrDriverExit() done", NULL);
 
 Exit:
     return Status;
@@ -338,7 +340,7 @@ static EFI_STATUS EFIAPI IsDriverServiced(_Inout_ CBMR_SERVICING_INFO* Servicing
             //
             // Ok, this is a first-run driver instance (not serviced)
             //
-            DBG_INFO("ServicingInfo variable not found");
+            DBG_INFO("ServicingInfo variable not found", NULL);
         }
 
         return Status;
@@ -358,7 +360,7 @@ static EFI_STATUS EFIAPI IsDriverServiced(_Inout_ CBMR_SERVICING_INFO* Servicing
         return EFI_ACCESS_DENIED;
     }
 
-    DBG_INFO("Inside serviced driver");
+    DBG_INFO("Inside serviced driver", NULL);
 
     return Status;
 }
@@ -401,7 +403,7 @@ static EFI_STATUS EFIAPI PerformServicingOperations(_In_ CBMR_SERVICING_INFO* Se
     //
 
     if (ProgressCallback != NULL) {
-        Status = ProgressCallback((PEFI_MS_CBMR_PROTOCOL)Internal, Progress);
+        Status = ProgressCallback((PEFI_MS_CBMR_PROTOCOL)ServicingInfo->Internal, Progress);
         if (EFI_ERROR(Status)) {
             //
             // Terminate the download process if the caller asked us not

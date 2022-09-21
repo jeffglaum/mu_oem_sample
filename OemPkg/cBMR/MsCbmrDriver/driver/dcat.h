@@ -35,4 +35,4 @@ EFI_STATUS EFIAPI DcatExtractDigestFromFileInfo(_In_ DCAT_FILE_INFO* DcatFileInf
 EFI_STATUS EFIAPI DcatFileInfoFree(_Inout_ DCAT_FILE_INFO* DcatFileInfo);
 EFI_STATUS EFIAPI DcatFree(_Inout_ DCAT_CONTEXT* Context);
 
-#endif _DCAT_H_
+#endif // _DCAT_H_

@@ -11,8 +11,12 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/SortLib.h>
 #include <Library/PrintLib.h>
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/HttpLib.h>
 #include <Guid/FileSystemInfo.h>
 #include <Guid/FileSystemVolumeLabelInfo.h>
+#include <Guid/ImageAuthentication.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/DebugPort.h>
 #include <Protocol/DevicePathUtilities.h>
@@ -27,6 +31,10 @@
 #include <Protocol/Shell.h>
 #include <Protocol/Supplicant.h>
 #include <Protocol/Smbios.h>
+#include <Protocol/Hash2.h>
+#include <Protocol/ServiceBinding.h>
+#include <Protocol/BootManagerPolicy.h>
+#include <Protocol/RamDisk.h>
 
 #define _In_     IN
 #define _In_opt_ IN
@@ -36,6 +44,7 @@
 #define _Out_                       OUT
 #define _Outptr_                    OUT
 #define _Outptr_result_maybenull_z_ OUT
+#define _Out_opt_                   OUT
 #define _Ret_z_
 #define _Out_writes_z_(x)
 #define _Out_writes_(x)
@@ -43,31 +52,70 @@
 #define _In_reads_bytes_(x)
 #define _In_reads_z_(x)
 #define _Outptr_opt_result_buffer_to_(x, y)
+#define _Outptr_result_buffer_(Count)
 #define _Return_type_success_(x)
+#define _Field_size_(Size)
+#define _In_reads_(CertCount)
 
 #define PWSTR CHAR16*
 #define UNREFERENCED_PARAMETER(x)
 typedef void* PVOID;
 typedef int INT;
 #define PUINT8 UINT8*
+#define USHORT UINT16
+#define ULONG UINT32
+#define LONG INT32
+#define LONGLONG INT64
+#define ULONGLONG UINT64
+#define BYTE UINT8
+#define CHAR CHAR8
+#define WORD UINT16
+#define DWORD UINT32
+#define ARRAYSIZE ARRAY_SIZE
+#define STRSAFE_LPSTR CHAR8*
+#define STRSAFE_LPCSTR CHAR8*
+#define FAILED EFI_ERROR
+typedef union _LARGE_INTEGER {
+  struct {
+    DWORD LowPart;
+    LONG  HighPart;
+  } DUMMYSTRUCTNAME;
+  struct {
+    DWORD LowPart;
+    LONG  HighPart;
+  } u;
+  LONGLONG QuadPart;
+} LARGE_INTEGER;
+#define XmlNode2 XmlNode
 
-#define gEfiWirelessMacConnection2ProtocolGuid gEfiWiFi2ProtocolGuid
 #define EFI_DEBUGPORT                          EFI_DEBUGPORT_PROTOCOL
 #define EFI_PARTITION_INFO                     EFI_PARTITION_INFO_PROTOCOL
 extern EFI_GUID gEfiPartitionRecordGuid;
 #define EFI_PARTITION_TYPE_GPT PARTITION_TYPE_GPT
 
+#define FIELD_OFFSET(TYPE, Field)  OFFSET_OF(TYPE, Field)
 #define _countof(x) ARRAY_SIZE(x)
 #define va_list     VA_LIST
 #define va_start    VA_START
 #define va_end      VA_END
 
+#ifndef ASSERT
 #define ASSERT(x)
+#endif
 
 #define StrHexToUintn     StrHexToUintnMsExtension
 #define StrDecimalToUintn StrDecimalToUintnMsExtension
 
 #define ConvertTextToDevicPath ConvertTextToDevicePath
+
+#define StringCchPrintfW EFI_SUCCESS; UnicodeSPrint
+#define StringCchPrintfA EFI_SUCCESS; AsciiSPrint
+
+#define GetTickCount() (0)  // TBD, need to port to UEFI libraries to get callback timing
+#define ALIGN_UP_BY(v, al)   (((v % al) == 0) ? (v) : (v + (al - (v % al))))
+
+#define XML_UTF8_DECLARATION  "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+#define XML_UTF16_DECLARATION L"<?xml version=\"1.0\" encoding=\"UTF-16\" standalone=\"yes\"?>"
 
 #else
 #include <bootlib.h>
@@ -92,6 +140,12 @@ extern EFI_GUID gEfiPartitionRecordGuid;
 #else
 #error "Architecture not supported"
 #endif
+
+extern EFI_BOOT_SERVICES* gBS;
+extern EFI_SYSTEM_TABLE* gST;
+extern EFI_RUNTIME_SERVICES* gRT;
+extern EFI_HANDLE* gImageHandle;
+
 #endif
 
 #define t(x) (CHAR8*)(x)
@@ -104,11 +158,6 @@ extern EFI_GUID gEfiPartitionRecordGuid;
 
 #define HASH_LENGTH       32
 #define MAX_80211_PWD_LEN 63
-
-extern EFI_BOOT_SERVICES* gBS;
-extern EFI_SYSTEM_TABLE* gSystemTable;
-extern EFI_RUNTIME_SERVICES* gRT;
-extern EFI_HANDLE* gImageHandle;
 
 #include "cbmr.h"
 #include "utils.h"

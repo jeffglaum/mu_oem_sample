@@ -22,13 +22,18 @@ Environment:
 
 #include "cbmrincludes.h"
 #include "file.h"
-#include "XmlTypes.h"
-#include "xmltreelib.h"
-#include "xmltreequerylib.h"
+#include <XmlTypes.h>
+#include <Library/XmlTreeLib.h>
+#include <Library/XmlTreeQueryLib.h>
 #include "wim.h"
 #include "wimfile.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 #include "error.h"
+
+EFI_STATUS EFIAPI CreateXmlTreeW(IN CONST CHAR16* XmlDocument, IN UINTN SizeXmlDocument, OUT XmlNode2** RootNode);
+XmlNode2* EFIAPI FindNextChildNodeByName(IN CONST XmlNode2* ParentNode, IN CONST XmlNode2* PreviousChild, IN CONST CHAR8* ElementName);
 
 #ifndef UEFI_BUILD_SYSTEM
 #pragma prefast(push)
@@ -119,13 +124,13 @@ EFI_STATUS EFIAPI WimInit(_In_ EFI_FILE_PROTOCOL* WimFile, _Outptr_ WIM_CONTEXT*
 
     if (FileSize == 0) {
         Status = EFI_INVALID_PARAMETER;
-        DBG_ERROR("Invalid WIM size");
+        DBG_ERROR("Invalid WIM size", NULL);
         goto Exit;
     }
 
     RetContext = AllocateZeroPool(sizeof(WIM_CONTEXT));
     if (RetContext == NULL) {
-        DBG_ERROR("Out of memory");
+        DBG_ERROR("Out of memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -216,7 +221,7 @@ EFI_STATUS EFIAPI WimInit(_In_ EFI_FILE_PROTOCOL* WimFile, _Outptr_ WIM_CONTEXT*
 
     XmlBuffer = AllocateZeroPool(BufferSize);
     if (XmlBuffer == NULL) {
-        DBG_ERROR("Out of memory");
+        DBG_ERROR("Out of memory", NULL);
         goto Exit;
     }
 
@@ -255,7 +260,7 @@ EFI_STATUS EFIAPI WimInit(_In_ EFI_FILE_PROTOCOL* WimFile, _Outptr_ WIM_CONTEXT*
 
     if (StringLength == 0) {
         Status = EFI_INVALID_PARAMETER;
-        DBG_ERROR("Unexpected NUL character in WIM XML");
+        DBG_ERROR("Unexpected NUL character in WIM XML", NULL);
         goto Exit;
     }
 
@@ -291,7 +296,7 @@ EFI_STATUS EFIAPI WimInit(_In_ EFI_FILE_PROTOCOL* WimFile, _Outptr_ WIM_CONTEXT*
     if (ImageNode != NULL) {
         ResourcesNode = FindFirstChildNodeByName(ImageNode, t("RESOURCES"));
         if (ResourcesNode != NULL) {
-            DBG_INFO("Found <RESOURCES> node!");
+            DBG_INFO("Found <RESOURCES> node!", NULL);
         }
     }
 
@@ -333,13 +338,13 @@ EFI_STATUS EFIAPI WimFree(_Inout_ WIM_CONTEXT* Context)
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (Context == NULL) {
-        DBG_ERROR("Context is NULL");
+        DBG_ERROR("Context is NULL", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!Context->Initialized) {
-        DBG_ERROR("Context has not been initialized");
+        DBG_ERROR("Context has not been initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -371,19 +376,19 @@ EFI_STATUS EFIAPI WimExtractFileIntoDestination(_In_ WIM_CONTEXT* Context,
 
     if (Context == NULL || FilePath == NULL || DestinationPartitionName == NULL ||
         DestinationFilePath == NULL) {
-        DBG_ERROR("Invalid parameter");
+        DBG_ERROR("Invalid parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!Context->Initialized) {
-        DBG_ERROR("Context is not initialized");
+        DBG_ERROR("Context is not initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (Context->ResourcesNode == NULL) {
-        DBG_ERROR("<RESOURCES> node was not found during XML deserialization");
+        DBG_ERROR("<RESOURCES> node was not found during XML deserialization", NULL);
         Status = EFI_UNSUPPORTED;
         goto Exit;
     }
@@ -435,7 +440,7 @@ EFI_STATUS EFIAPI WimExtractFileIntoDestination(_In_ WIM_CONTEXT* Context,
 
         PathNode = FindFirstChildNodeByName(FileNode, t("PATH"));
         if (PathNode == NULL) {
-            DBG_ERROR("<PATH> node not found, invalid XML");
+            DBG_ERROR("<PATH> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         } else {
@@ -450,14 +455,14 @@ EFI_STATUS EFIAPI WimExtractFileIntoDestination(_In_ WIM_CONTEXT* Context,
 
                 FileOffsetNode = FindFirstChildNodeByName(FileNode, t("OFFSET"));
                 if (FileOffsetNode == NULL) {
-                    DBG_ERROR("<OFFSET> node not found, invalid XML");
+                    DBG_ERROR("<OFFSET> node not found, invalid XML", NULL);
                     Status = EFI_INVALID_PARAMETER;
                     goto Exit;
                 }
 
                 FileSizeNode = FindFirstChildNodeByName(FileNode, t("SIZE"));
                 if (FileSizeNode == NULL) {
-                    DBG_ERROR("<SIZE> node not found, invalid XML");
+                    DBG_ERROR("<SIZE> node not found, invalid XML", NULL);
                     Status = EFI_INVALID_PARAMETER;
                     goto Exit;
                 }
@@ -515,19 +520,19 @@ EFI_STATUS EFIAPI WimExtractCbmrNode(_In_ WIM_CONTEXT* Context, _Outptr_ XmlNode
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (Context == NULL || CbmrNode == NULL) {
-        DBG_ERROR("Invalid parameter");
+        DBG_ERROR("Invalid parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
 
     if (!Context->Initialized) {
-        DBG_ERROR("Context is not initialized");
+        DBG_ERROR("Context is not initialized", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (Context->CbmrNode == NULL) {
-        DBG_ERROR("<CBMR> node was not found during XML deserialization");
+        DBG_ERROR("<CBMR> node was not found during XML deserialization", NULL);
         Status = EFI_UNSUPPORTED;
         goto Exit;
     }
@@ -542,3 +547,180 @@ Exit:
 #ifndef UEFI_BUILD_SYSTEM
 #pragma prefast(pop)
 #endif
+
+
+
+
+
+
+
+
+
+
+/**
+This function will create a xml tree given an XML document as a Unicode string.
+
+@param   XmlDocument     -- XML document to create the node list for.
+@param   SizeXmlDocument -- Length of the document.
+@param   RootNode        -- The root node that contains the node list.
+
+@return  EFI_SUCCESS or underlying failure code.
+
+**/
+EFI_STATUS
+EFIAPI
+CreateXmlTreeW(IN CONST CHAR16* XmlDocument, IN UINTN SizeXmlDocument, OUT XmlNode2** RootNode)
+{
+    EFI_STATUS Status = EFI_SUCCESS;
+    UINTN StringLength = 0;
+    UINTN Result = 0;
+    CHAR8* AsciiXmlBuffer = NULL;
+    CHAR8* AsciiXmlWithDeclarationBuffer = NULL;
+    UINT8 LittleEndianUtf16BOM[2] = {0xFF, 0xFE};
+    UINTN BufferSize = 0;
+
+    if (XmlDocument == NULL || SizeXmlDocument == 0 || RootNode == NULL) {
+        Status = EFI_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    //
+    // Make an explicit check for BOM. Manual inspection of
+    // WIM XML shows it has UTF-16 LE BOM (FF FE), so this is what
+    // we'll look for.
+    //
+
+    if (SizeXmlDocument == 1) {
+        Status = EFI_INVALID_PARAMETER;
+        DBG_ERROR("XML should contain more than just BOM", NULL);
+        goto Exit;
+    }
+
+    if (CompareMem(XmlDocument, LittleEndianUtf16BOM, sizeof(LittleEndianUtf16BOM)) != 0) {
+        Status = EFI_INVALID_PARAMETER;
+        DBG_ERROR("XML contains incorrect BOM", NULL);
+        goto Exit;
+    }
+
+    //
+    // To ensure AsciiXmlBuffer and AsciiXmlWithDeclarationBuffer are NUL
+    // terminated.
+    //
+
+    Status = UintnAdd(SizeXmlDocument, sizeof(CHAR8), &StringLength);
+    if (EFI_ERROR(Status)) {
+        DBG_ERROR("UintnAdd() failed 0x%zx", Status);
+        goto Exit;
+    }
+
+    AsciiXmlBuffer = AllocateZeroPool(StringLength);
+    if (AsciiXmlBuffer == NULL) {
+        DBG_ERROR("Out of memory", NULL);
+        goto Exit;
+    }
+
+    UnicodeStrToAsciiStr(XmlDocument + 1 /*Skip over BOM*/, AsciiXmlBuffer);
+
+    Status = UintnAdd(ARRAYSIZE(XML_UTF8_DECLARATION), StringLength, &BufferSize);
+    if (EFI_ERROR(Status)) {
+        DBG_ERROR("UintnAdd() failed 0x%zx", Status);
+        goto Exit;
+    }
+
+    AsciiXmlWithDeclarationBuffer = AllocateZeroPool(BufferSize);
+    if (AsciiXmlWithDeclarationBuffer == NULL) {
+        DBG_ERROR("Out of memory", NULL);
+        goto Exit;
+    }
+
+    Result = StringCchPrintfA((STRSAFE_LPSTR)AsciiXmlWithDeclarationBuffer,
+                              BufferSize,
+                              (STRSAFE_LPCSTR) "%s%s",
+                              XML_UTF8_DECLARATION,
+                              AsciiXmlBuffer);
+    if (FAILED(Result)) {
+        DBG_ERROR("StringCchPrintfA failed 0x%zx", Result);
+        Status = EFI_INVALID_PARAMETER;
+        goto Exit;
+    }
+
+    StringLength = AsciiStrnLenS(AsciiXmlWithDeclarationBuffer, BufferSize);
+
+    Status = CreateXmlTree(AsciiXmlWithDeclarationBuffer, StringLength, RootNode);
+    if (EFI_ERROR(Status)) {
+        DBG_ERROR("CreateXmlTree() failed 0x%zx", Status);
+        goto Exit;
+    }
+
+Exit:
+
+    FreePool(AsciiXmlBuffer);
+    FreePool(AsciiXmlWithDeclarationBuffer);
+
+    return Status;
+}
+
+/**
+Finds the next child after a previous call FindFirstChildNodeByName or
+FindNextChildNodeByName that has a matching ElementName.
+
+@param[in]  ParentNode to search under
+@param[in]  PreviousChild of previous search. If NULL, funcitons returns first child
+@param[in]  ElementName to search for
+
+@retval
+**/
+XmlNode2*
+EFIAPI
+FindNextChildNodeByName(
+  IN CONST XmlNode2* ParentNode,
+  IN CONST XmlNode2* PreviousChild,
+  IN CONST CHAR8* ElementName)
+{
+    LIST_ENTRY* Link = NULL;
+
+    if (ParentNode == NULL) {
+        DBG_ERROR("Parent Node is NULL", NULL);
+        ASSERT(ParentNode != NULL);
+        return NULL;
+    }
+
+    if (ElementName == NULL) {
+        DBG_ERROR("Element Name is NULL", NULL);
+        ASSERT(ElementName != NULL);
+        return NULL;
+    }
+
+    //
+    // Previous child is NULL, so just return the first child.
+    //
+
+    if (PreviousChild == NULL) {
+        return FindFirstChildNodeByName(ParentNode, ElementName);
+    }
+
+    DBG_VERBOSE("Looking for next '%s", ElementName);
+    DBG_VERBOSE("Looking in children of '%s", ParentNode->Name);
+
+    //
+    // Link is guaranteed to be initialized to node immediately following PreviousChild
+    // or NULL if no more nodes are found.
+    //
+
+    for (Link = GetNextNode(&ParentNode->ChildrenListHead, (LIST_ENTRY*)PreviousChild);
+         !IsNull(&ParentNode->ChildrenListHead, Link);
+         Link = GetNextNode(&ParentNode->ChildrenListHead, Link)) {
+        XmlNode2* NodeThis = (XmlNode2*)Link;
+        DBG_VERBOSE("Checking Node: ElementName = '%s'", NodeThis->Name);
+        if (AsciiStrnCmp(ElementName, NodeThis->Name, MAX_ELEMENT_NAME_LENGTH) == 0) {
+            // Found it
+            DBG_VERBOSE("Found element", NULL);
+            return NodeThis;
+        }
+    }
+
+    DBG_VERBOSE("Didn't find element named %s", ElementName);
+    return NULL;
+}
+
+

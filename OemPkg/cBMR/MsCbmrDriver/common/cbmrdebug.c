@@ -79,8 +79,8 @@ EFI_STATUS EFIAPI DebugInit(CHAR8* ModuleName)
         Status = DebugOpenFile();
         if (EFI_ERROR(Status)) {
             gsDebugFile = NULL;
-            gSystemTable->ConOut->OutputString(gSystemTable->ConOut,
-                                               L"Failed to open/create debug.log file");
+            gST->ConOut->OutputString(gST->ConOut,
+                                      L"Failed to open/create debug.log file");
             return Status;
         }
     }
@@ -386,7 +386,7 @@ static VOID DebugWrite(_In_z_ CHAR8* Str, _In_ UINTN BufferLength)
     if (gCbmrConfig.SpewTarget & SPEW_CONSOLE) {
         CHAR16 BufferWide[512];
         AsciiStrToUnicodeStr(Str, BufferWide);
-        gSystemTable->ConOut->OutputString(gSystemTable->ConOut, BufferWide);
+        gST->ConOut->OutputString(gST->ConOut, BufferWide);
     }
 
     if (gCbmrConfig.SpewTarget & SPEW_FILE) {
@@ -402,11 +402,11 @@ static const struct {
     UINTN BitMask;
     CHAR8* FlagName;
     CHAR16* FlagNameW;
-} DebugFlags[DEBUG_MAX] = {
-    [DEBUG_ERROR] = {1U << DEBUG_ERROR, t("ERROR"), T("ERROR")},
-    [DEBUG_WARNING] = {1U << DEBUG_WARNING, t("WARNING"), T("WARNING")},
-    [DEBUG_INFO] = {1U << DEBUG_INFO, t("INFO"), T("INFO")},
-    [DEBUG_VERBOSE] = {1U << DEBUG_VERBOSE, t("VERBOSE"), T("VERBOSE")},
+} DebugFlags[FLAG_DEBUG_MAX] = {
+    [FLAG_DEBUG_ERROR] = {1U << FLAG_DEBUG_ERROR, t("ERROR"), T("ERROR")},
+    [FLAG_DEBUG_WARNING] = {1U << FLAG_DEBUG_WARNING, t("WARNING"), T("WARNING")},
+    [FLAG_DEBUG_INFO] = {1U << FLAG_DEBUG_INFO, t("INFO"), T("INFO")},
+    [FLAG_DEBUG_VERBOSE] = {1U << FLAG_DEBUG_VERBOSE, t("VERBOSE"), T("VERBOSE")},
 };
 
 static BOOLEAN IsDebugFlagEnabled(DEBUG_FLAGS DebugFlag)

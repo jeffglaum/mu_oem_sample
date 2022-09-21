@@ -26,7 +26,9 @@ Environment:
 //
 
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 
 //
 // Local includes
@@ -39,9 +41,9 @@ Environment:
 #include "tls.h"
 #include "file.h"
 #include "dcat.h"
-#include "XmlTypes.h"
-#include "xmltreelib.h"
-#include "xmltreequerylib.h"
+#include <XmlTypes.h>
+#include <Library/XmlTreeLib.h>
+#include <Library/XmlTreeQueryLib.h>
 #include "wim.h"
 #include "string_helper.h"
 #include "patched_bcd.h"
@@ -141,6 +143,18 @@ static CERT DcatContentChannelTlsCaCerts[] = {
 // Local functions
 //
 
+EFI_STATUS
+StrDup(
+  CHAR16 *Src,
+  CHAR16 **DstPtr)
+{
+  UINTN Sz;
+
+  Sz = (StrLen(Src) + 1) * 2;
+  *DstPtr = AllocateZeroPool(Sz);
+  return StrCpyS (*DstPtr, Sz / 2, Src);
+}
+
 static EFI_STATUS CbmrBuildRequestHeaders(_In_ CHAR8* Url,
                                           _In_ UINTN UrlLength,
                                           _Outptr_result_buffer_(*Count) EFI_HTTP_HEADER** Headers,
@@ -160,8 +174,7 @@ static EFI_STATUS CbmrBuildRequestHeaders(_In_ CHAR8* Url,
         CHAR8* Name;
         CHAR8* Value;
     } NameValues[] = {
-        {t("User-Agent"),
-         t("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.134 Safari/537.36 Edg/103.0.1264.71")},
+        {t("User-Agent"), t("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.134 Safari/537.36 Edg/103.0.1264.71")},
         {t("Connection"), t("keep-alive")},
         {t("Keep-Alive"), t("timeout=3600, max=1000")},
     };
@@ -214,7 +227,7 @@ static EFI_STATUS CbmrBuildRequestHeaders(_In_ CHAR8* Url,
                               (STRSAFE_LPCSTR)FormatString,
                               Hostname,
                               Port);
-    if (FAILED(Result)) {
+    if (EFI_ERROR(Result)) {
         DBG_ERROR("StringCchPrintfA failed 0x%zx", Result);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
@@ -262,7 +275,7 @@ Exit:
 
     if (EFI_ERROR(Status)) {
         if (Status == EFI_OUT_OF_RESOURCES) {
-            DBG_ERROR("Out of memory");
+            DBG_ERROR("Out of memory", NULL);
         }
 
         HttpFreeHeaderFields(RequestHeaders, HeaderCount);
@@ -360,7 +373,7 @@ static EFI_STATUS CbmrFetchCollateralsFromUSBKey(_In_ PEFI_MS_CBMR_PROTOCOL_INTE
     Internal->Collaterals = AllocateZeroPool(sizeof(EFI_MS_CBMR_COLLATERAL) *
                                              Internal->NumberOfCollaterals);
     if (Internal->Collaterals == NULL) {
-        DBG_ERROR("Unable to allocate memory for Collaterals");
+        DBG_ERROR("Unable to allocate memory for Collaterals", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -369,19 +382,19 @@ static EFI_STATUS CbmrFetchCollateralsFromUSBKey(_In_ PEFI_MS_CBMR_PROTOCOL_INTE
         EFI_FILE_PROTOCOL* File = NULL;
         Status = StrDup(Collaterals[i].FilePath, &Internal->Collaterals[i].FilePath);
         if (EFI_ERROR(Status)) {
-            DBG_ERROR("StrDup() failed");
+            DBG_ERROR("StrDup() failed", NULL);
             goto Exit;
         }
 
         Status = StrDup(Collaterals[i].RootUrl, &Internal->Collaterals[i].RootUrl);
         if (EFI_ERROR(Status)) {
-            DBG_ERROR("StrDup() failed");
+            DBG_ERROR("StrDup() failed", NULL);
             goto Exit;
         }
 
         Status = StrDup(Collaterals[i].RelativeUrl, &Internal->Collaterals[i].RelativeUrl);
         if (EFI_ERROR(Status)) {
-            DBG_ERROR("StrDup() failed");
+            DBG_ERROR("StrDup() failed", NULL);
             goto Exit;
         }
 
@@ -403,7 +416,7 @@ static EFI_STATUS CbmrFetchCollateralsFromUSBKey(_In_ PEFI_MS_CBMR_PROTOCOL_INTE
         FileClose(File);
     }
 
-    DBG_INFO("Fetched collaterals from USB Key");
+    DBG_INFO("Fetched collaterals from USB Key", NULL);
 
     return Status;
 
@@ -441,7 +454,7 @@ static EFI_STATUS CbmrFetchCollateralsFromHttpEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
     Internal->Collaterals = AllocateZeroPool(sizeof(EFI_MS_CBMR_COLLATERAL) *
                                              Internal->NumberOfCollaterals);
     if (Internal->Collaterals == NULL) {
-        DBG_ERROR("Unable to allocate memory for Collaterals");
+        DBG_ERROR("Unable to allocate memory for Collaterals", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -473,7 +486,7 @@ static EFI_STATUS CbmrFetchCollateralsFromHttpEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
         EFI_STATUS FilePathStatus = StrDup(Collaterals[i].FilePath,
                                            &Internal->Collaterals[i].FilePath);
         if (EFI_ERROR(UrlStatus) || EFI_ERROR(FilePathStatus)) {
-            DBG_ERROR("StrDup() failed");
+            DBG_ERROR("StrDup() failed", NULL);
             Status = EFI_OUT_OF_RESOURCES;
             goto Exit;
         }
@@ -483,11 +496,11 @@ static EFI_STATUS CbmrFetchCollateralsFromHttpEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
 
     Status = CbmrFetchCollateralsSizeFromHttp(Internal);
     if (EFI_ERROR(Status)) {
-        DBG_ERROR("Unable to get collateral sizes");
+        DBG_ERROR("Unable to get collateral sizes", NULL);
         goto Exit;
     }
 
-    DBG_INFO("Fetched collaterals from HTTP endpoint");
+    DBG_INFO("Fetched collaterals from HTTP endpoint", NULL);
 
     return Status;
 
@@ -530,7 +543,7 @@ static EFI_STATUS CbmrFetchCollateralsFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
         goto Exit;
     }
 
-    DBG_INFO("Configured TLS certs for metadata channel");
+    DBG_INFO("Configured TLS certs for metadata channel", NULL);
 
     //
     // Loop over available SI starting from SI2
@@ -551,7 +564,7 @@ static EFI_STATUS CbmrFetchCollateralsFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
         Internal->Collaterals = AllocateZeroPool(sizeof(EFI_MS_CBMR_COLLATERAL) *
                                                  Internal->NumberOfCollaterals);
         if (Internal->Collaterals == NULL) {
-            DBG_ERROR("Unable to allocate memory for Collaterals");
+            DBG_ERROR("Unable to allocate memory for Collaterals", NULL);
             Status = EFI_OUT_OF_RESOURCES;
             goto Exit;
         }
@@ -582,7 +595,7 @@ static EFI_STATUS CbmrFetchCollateralsFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
         for (UINTN i = 0; i < Internal->NumberOfCollaterals; i++) {
             AsciiStr = AllocateZeroPool(Collaterals[i].RelativeUrlLength + sizeof(CHAR8));
             if (AsciiStr == NULL) {
-                DBG_ERROR("Out of memory");
+                DBG_ERROR("Out of memory", NULL);
                 Status = EFI_OUT_OF_RESOURCES;
                 goto SiExit;
             }
@@ -630,7 +643,7 @@ static EFI_STATUS CbmrFetchCollateralsFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
             Internal->Collaterals[i].RootUrl = AllocateZeroPool(UrlLength * sizeof(CHAR16) +
                                                                 sizeof(CHAR16));
             if (Internal->Collaterals[i].RootUrl == NULL) {
-                DBG_ERROR("Out of memory");
+                DBG_ERROR("Out of memory", NULL);
                 Status = EFI_OUT_OF_RESOURCES;
                 goto SiExit;
             }
@@ -641,7 +654,7 @@ static EFI_STATUS CbmrFetchCollateralsFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCO
 
             Status = StrDup(Collaterals[i].FilePath, &Internal->Collaterals[i].FilePath);
             if (EFI_ERROR(Status)) {
-                DBG_ERROR("StrDup() failed");
+                DBG_ERROR("StrDup() failed", NULL);
                 goto SiExit;
             }
 
@@ -726,6 +739,9 @@ static EFI_STATUS CbmrFetchCollaterals(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Inter
             return CbmrFetchCollateralsFromHttpEndpoint(Internal);
         case CBMR_ENDPOINT_TYPE_USBKEY:
             return CbmrFetchCollateralsFromUSBKey(Internal);
+#else
+        default:
+            break;
 #endif
     }
 
@@ -755,7 +771,7 @@ static EFI_STATUS CbmrConfigureRamdisk(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Inter
         goto Exit;
     }
 
-    DBG_INFO("Configured Ramdisk");
+    DBG_INFO("Configured Ramdisk", NULL);
     return Status;
 Exit:
     CbmrSetExtendedErrorInfo(Status, CBMR_ERROR_DRIVER_RAMDISK_CONFIGURATION_FAILED);
@@ -921,14 +937,14 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         VersionNode = FindFirstChildNodeByName(CbmrNode, t("VERSION"));
         if (VersionNode == NULL) {
-            DBG_ERROR("<VERSION> node not found, invalid XML");
+            DBG_ERROR("<VERSION> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("ARCHITECTURE"));
         if (TempNode == NULL) {
-            DBG_ERROR("<ARCHITECTURE> node not found, invalid XML");
+            DBG_ERROR("<ARCHITECTURE> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -937,7 +953,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("MAJOR"));
         if (TempNode == NULL) {
-            DBG_ERROR("<MAJOR> node not found, invalid XML");
+            DBG_ERROR("<MAJOR> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -946,7 +962,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("MINOR"));
         if (TempNode == NULL) {
-            DBG_ERROR("<MINOR> node not found, invalid XML");
+            DBG_ERROR("<MINOR> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -955,7 +971,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("BUILD"));
         if (TempNode == NULL) {
-            DBG_ERROR("<BUILD> node not found, invalid XML");
+            DBG_ERROR("<BUILD> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -964,7 +980,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("REVISION"));
         if (TempNode == NULL) {
-            DBG_ERROR("<REVISION> node not found, invalid XML");
+            DBG_ERROR("<REVISION> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -973,7 +989,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("EDITION"));
         if (TempNode == NULL) {
-            DBG_ERROR("<EDITION> node not found, invalid XML");
+            DBG_ERROR("<EDITION> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -982,7 +998,7 @@ static EFI_STATUS CbmrProcessSoftwareInventory(_In_ PEFI_MS_CBMR_PROTOCOL_INTERN
 
         TempNode = FindFirstChildNodeByName(VersionNode, t("BRANCH"));
         if (TempNode == NULL) {
-            DBG_ERROR("<BRANCH> node not found, invalid XML");
+            DBG_ERROR("<BRANCH> node not found, invalid XML", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }
@@ -1293,12 +1309,12 @@ static EFI_STATUS CbmrDepositWiFiProfileToRamdisk(_In_ PEFI_MS_CBMR_PROTOCOL_INT
     PEFI_MS_CBMR_WIFI_NETWORK_PROFILE WiFiProfile = &CbmrConfigData->WifiProfile;
     CHAR8 WiFiProfileContent[256] = {0};
     UINTN WiFiProfileContentSize = 0;
-    HRESULT Hr = S_OK;
+    EFI_STATUS Hr = EFI_SUCCESS;
 
     UNREFERENCED_PARAMETER(Internal);
 
     if (WiFiProfile->SSIdLength == 0 || WiFiProfile->PasswordLength == 0) {
-        DBG_INFO("No Wifi profile available");
+        DBG_INFO("No Wifi profile available", NULL);
         goto Exit;
     }
 
@@ -1318,7 +1334,7 @@ static EFI_STATUS CbmrDepositWiFiProfileToRamdisk(_In_ PEFI_MS_CBMR_PROTOCOL_INT
                           WiFiProfile->Password);
     if (FAILED(Hr)) {
         Status = EFI_INVALID_PARAMETER;
-        DBG_ERROR("StringCchPrintfW failed");
+        DBG_ERROR("StringCchPrintfW failed", NULL);
         goto Exit;
     }
 
@@ -1330,7 +1346,7 @@ static EFI_STATUS CbmrDepositWiFiProfileToRamdisk(_In_ PEFI_MS_CBMR_PROTOCOL_INT
         goto Exit;
     }
 
-    DBG_INFO("Deposited Wi-Fi Profile");
+    DBG_INFO("Deposited Wi-Fi Profile", NULL);
 
 Exit:
 
@@ -1389,7 +1405,7 @@ static EFI_STATUS CbmrServiceDriver(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal
             goto Exit;
         }
 
-        DBG_INFO("Found downloaded CBMR driver. Attempting to load it.");
+        DBG_INFO("Found downloaded CBMR driver. Attempting to load it.", NULL);
 
         //
         // Get driver size and allocate memory for it
@@ -1404,7 +1420,7 @@ static EFI_STATUS CbmrServiceDriver(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal
         Internal->CbmrDriverSize = (UINTN)FileSize;
         Internal->CbmrDriver = AllocateZeroPool(Internal->CbmrDriverSize);
         if (Internal->CbmrDriver == NULL) {
-            DBG_ERROR("Out of resources");
+            DBG_ERROR("Out of resources", NULL);
             Status = EFI_OUT_OF_RESOURCES;
             goto Exit;
         }
@@ -1691,7 +1707,7 @@ CbmrStartCollateralDownloadFromHttpEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
             Internal->Collaterals[i].MemoryLocation = AllocatePool(
                 Internal->Collaterals[i].CollateralSize);
             if (Internal->Collaterals[i].MemoryLocation == NULL) {
-                DBG_ERROR("Out of memory");
+                DBG_ERROR("Out of memory", NULL);
                 Status = EFI_OUT_OF_RESOURCES;
                 goto Exit;
             }
@@ -1889,7 +1905,7 @@ CbmrStartCollateralDownloadFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
             goto Exit;
         }
 
-        DBG_INFO("Configured TLS certs for content channel");
+        DBG_INFO("Configured TLS certs for content channel", NULL);
     }
 
     //
@@ -1900,7 +1916,7 @@ CbmrStartCollateralDownloadFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
     DownloadProgress = &Progress->ProgressData.DownloadProgress;
 
     if (gCbmrConfig.SkipHashValidation == FALSE) {
-        Status = gBS->LocateProtocol(&gEfiHash2ServiceBindingProtocolGuid, NULL, &ServiceBinding);
+        Status = gBS->LocateProtocol(&gEfiHash2ServiceBindingProtocolGuid, NULL, (void**)&ServiceBinding);
         if (EFI_ERROR(Status)) {
             DBG_ERROR("LocateProtocol() for Hash2 servicing binding protocol failed 0x%zx", Status);
             goto Exit;
@@ -1912,7 +1928,7 @@ CbmrStartCollateralDownloadFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
             goto Exit;
         }
 
-        Status = gBS->HandleProtocol(Handle, &gEfiHash2ProtocolGuid, &Hash2Protocol);
+        Status = gBS->HandleProtocol(Handle, &gEfiHash2ProtocolGuid, (void**)&Hash2Protocol);
         if (EFI_ERROR(Status)) {
             DBG_ERROR("HandleProtocol() for EFI_HASH2_PROTOCOL failed 0x%zx", Status);
             goto Exit;
@@ -1960,7 +1976,7 @@ CbmrStartCollateralDownloadFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
             Internal->Collaterals[i].MemoryLocation = AllocatePool(
                 Internal->Collaterals[i].CollateralSize);
             if (Internal->Collaterals[i].MemoryLocation == NULL) {
-                DBG_ERROR("Out of memory");
+                DBG_ERROR("Out of memory", NULL);
                 Status = EFI_OUT_OF_RESOURCES;
                 goto Exit;
             }
@@ -2124,7 +2140,7 @@ CbmrStartCollateralDownloadFromDcatEndpoint(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL 
             //
 
             if (CompareMem(Internal->Collaterals[i].Digest, Output.Sha256Hash, HASH_LENGTH) != 0) {
-                DBG_ERROR("Hash mismatch");
+                DBG_ERROR("Hash mismatch", NULL);
                 Status = EFI_ABORTED;
                 goto Exit;
             }
@@ -2192,10 +2208,10 @@ static EFI_STATUS CbmrStartCollateralDownload(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNA
         case CBMR_ENDPOINT_TYPE_USBKEY:
             Status = CbmrStartCollateralDownloadFromUSBKey(Internal);
             break;
+#endif
         default:
             Status = EFI_INVALID_PARAMETER;
             break;
-#endif
     }
 
     gRT->GetTime(&EndTime, NULL);
@@ -2237,10 +2253,10 @@ static EFI_STATUS CbmrExtractBootCollateralsFromWim(_In_ PEFI_MS_CBMR_PROTOCOL_I
 
     WIM_TO_RAMDISK_FILE BootFiles[] = {
         // clang-format off
-        {t(STUBOS_WIM_BOOT_SDI_PATH), STRING_LEN(STUBOS_WIM_BOOT_SDI_PATH), RAMDISK_BOOT_SDI_PATH, TRUE},
-        {t(STUBOS_WIM_BOOTMGR_PATH), STRING_LEN(STUBOS_WIM_BOOTMGR_PATH),    BOOTMGR_PATH, TRUE},
-        {t(STUBOS_WIM_BCD_PATH), STRING_LEN(STUBOS_WIM_BCD_PATH),        RAMDISK_BCD_PATH, TRUE},
-        {t(STUBOS_WIM_CBMR_DRIVER_PATH), STRING_LEN(STUBOS_WIM_CBMR_DRIVER_PATH), RAMDISK_CBMR_DRIVER_PATH, FALSE},
+        { t(STUBOS_WIM_BOOT_SDI_PATH),    STRING_LEN(STUBOS_WIM_BOOT_SDI_PATH),    RAMDISK_BOOT_SDI_PATH,    TRUE  },
+        { t(STUBOS_WIM_BOOTMGR_PATH),     STRING_LEN(STUBOS_WIM_BOOTMGR_PATH),     BOOTMGR_PATH,             TRUE  },
+        { t(STUBOS_WIM_BCD_PATH),         STRING_LEN(STUBOS_WIM_BCD_PATH),         RAMDISK_BCD_PATH,         TRUE  },
+        { t(STUBOS_WIM_CBMR_DRIVER_PATH), STRING_LEN(STUBOS_WIM_CBMR_DRIVER_PATH), RAMDISK_CBMR_DRIVER_PATH, FALSE }
         // clang-format on
     };
 
@@ -2288,7 +2304,7 @@ static EFI_STATUS CbmrExtractBootCollateralsFromWim(_In_ PEFI_MS_CBMR_PROTOCOL_I
         if (EFI_ERROR(Status)) {
             DBG_ERROR("WimExtractFileIntoDestination() failed 0x%zx", Status);
             if (BootFiles[Index].Critical == FALSE) {
-                DBG_INFO("Not critical for boot to succeed, ignore failure");
+                DBG_INFO("Not critical for boot to succeed, ignore failure", NULL);
                 Status = EFI_SUCCESS;
             } else {
                 goto Exit;
@@ -2325,13 +2341,13 @@ static EFI_STATUS CbmrWriteSIUefiVariable(_In_ SOFTWARE_INVENTORY_TYPE Inventory
 #define SI2_WIM_FILENAME L"si2.wim"
 
     if (InventoryType == SOFTWARE_INVENTORY_PRIMARY && gCbmrConfig.WriteSiUefiVariable == FALSE) {
-        DBG_INFO("Skip writing si.wim");
+        DBG_INFO("Skip writing si.wim", NULL);
         goto Exit;
     }
 
     if (InventoryType == SOFTWARE_INVENTORY_SECONDARY &&
         gCbmrConfig.WriteSi2UefiVariable == FALSE) {
-        DBG_INFO("Skip writing si2.wim");
+        DBG_INFO("Skip writing si2.wim", NULL);
         goto Exit;
     }
 
@@ -2409,7 +2425,7 @@ CbmrConfigureInternal(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal,
     SiInfo->RamdiskFilePath = RAMDISK_SI_WIM_PATH;
     SiInfo->RequestJson = AllocateZeroPool(MAX_JSON_REQUEST_SIZE);
     if (SiInfo->RequestJson == NULL) {
-        DBG_ERROR("Out of memory");
+        DBG_ERROR("Out of memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -2420,7 +2436,7 @@ CbmrConfigureInternal(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal,
     SiInfo->RamdiskFilePath = RAMDISK_SI2_WIM_PATH;
     SiInfo->RequestJson = AllocateZeroPool(MAX_JSON_REQUEST_SIZE);
     if (SiInfo->RequestJson == NULL) {
-        DBG_ERROR("Out of memory");
+        DBG_ERROR("Out of memory", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -2450,7 +2466,7 @@ CbmrConfigure(_In_ PEFI_MS_CBMR_PROTOCOL This,
     PEFI_MS_CBMR_PROGRESS Progress = &Internal->Progress;
 
     if (Internal->IsDriverConfigured == TRUE) {
-        DBG_WARNING("Cbmr driver is already configured");
+        DBG_WARNING("Cbmr driver is already configured", NULL);
         goto Exit;
     }
 
@@ -2582,7 +2598,7 @@ static EFI_STATUS CbmrCopyPatchedBCD(_In_ PEFI_MS_CBMR_PROTOCOL_INTERNAL This)
         goto Exit;
     }
 
-    DBG_INFO("Wrote patched BCD to ramdisk \\efi\\microsoft\\boot\\bcd");
+    DBG_INFO("Wrote patched BCD to ramdisk \\efi\\microsoft\\boot\\bcd", NULL);
 
 Exit:
 
@@ -2663,7 +2679,7 @@ CbmrStart(_In_ PEFI_MS_CBMR_PROTOCOL This)
     PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal = (PEFI_MS_CBMR_PROTOCOL_INTERNAL)This;
 
     if (Internal->IsDriverConfigured == FALSE) {
-        DBG_ERROR("Cbmr driver is not configured");
+        DBG_ERROR("Cbmr driver is not configured", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
@@ -2716,7 +2732,7 @@ CbmrStart(_In_ PEFI_MS_CBMR_PROTOCOL This)
     Status = CbmrServiceDriver(Internal);
     if (EFI_ERROR(Status)) {
         if (Status == EFI_NOT_FOUND) {
-            DBG_INFO("No cbmr_driver found, skip servicing");
+            DBG_INFO("No cbmr_driver found, skip servicing", NULL);
             Status = EFI_SUCCESS;
         } else {
             DBG_ERROR("CbmrServiceDriver() failed 0x%zx", Status);
@@ -2747,7 +2763,7 @@ static EFI_STATUS CbmrGetVersion(_In_ PEFI_MS_CBMR_PROTOCOL This,
     UNREFERENCED_PARAMETER(This);
 
     if (DataSize == NULL) {
-        DBG_ERROR("Invalid DataSize parameter");
+        DBG_ERROR("Invalid DataSize parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -2774,13 +2790,13 @@ static EFI_STATUS CbmrGetCollaterals(_In_ PEFI_MS_CBMR_PROTOCOL This,
     PEFI_MS_CBMR_PROTOCOL_INTERNAL Internal = (PEFI_MS_CBMR_PROTOCOL_INTERNAL)This;
 
     if (Internal->IsDriverConfigured == FALSE) {
-        DBG_ERROR("Cbmr driver is not configured");
+        DBG_ERROR("Cbmr driver is not configured", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (DataSize == NULL) {
-        DBG_ERROR("Invalid DataSize parameter");
+        DBG_ERROR("Invalid DataSize parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
@@ -2903,3 +2919,4 @@ Exit:
 #ifndef UEFI_BUILD_SYSTEM
 #pragma prefast(pop)
 #endif
+

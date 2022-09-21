@@ -11,7 +11,6 @@
 #define WINDOWS_SYSTEM_PARTITION_NAME   L"EFIESP"
 #define BOOTSTRAP_EFIESP_PARTITION_NAME L"BS_EFIESP"
 
-#ifndef UEFI_BUILD_SYSTEM
 #if defined(_X86_)
 #define BOOTMGR_NAME       L"bootia32.efi"
 #define BOOTMGR_NAME_ASCII "bootia32.efi"
@@ -26,7 +25,6 @@
 #define BOOTMGR_NAME_ASCII "bootaa64.efi"
 #else
 #error Architecture not supported.
-#endif
 #endif
 
 #define BOOTMGR_PATH       L"\\EFI\\Boot\\" BOOTMGR_NAME

@@ -112,7 +112,7 @@ EFI_STATUS EFIAPI TlsSetCACertList(_In_reads_(CertCount) CERT CertArray[], _In_ 
 
     LocalCert = Cert = AllocateZeroPool(CertDatabaseSize);
     if (Cert == NULL) {
-        DBG_ERROR("Out of memory.");
+        DBG_ERROR("Out of memory.", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -211,7 +211,7 @@ EFI_STATUS EFIAPI TlsSetCACertList(_In_reads_(CertCount) CERT CertArray[], _In_ 
             goto Exit;
         }
 
-        DBG_INFO("Successfully wrote EFI_SIGNATURE_LIST payload to certlist.bin file");
+        DBG_INFO("Successfully wrote EFI_SIGNATURE_LIST payload to certlist.bin file", NULL);
     }
 
     //
@@ -232,10 +232,10 @@ EFI_STATUS EFIAPI TlsSetCACertList(_In_reads_(CertCount) CERT CertArray[], _In_ 
 
         if (TlsUefiVariableContainsRequiredCerts(CertArray, CertCount)) {
             Status = EFI_SUCCESS;
-            DBG_INFO("Existing cert list contains required certs, skip write");
+            DBG_INFO("Existing cert list contains required certs, skip write", NULL);
             goto Exit;
         } else {
-            DBG_INFO("TLS variable is writed protected and does not contain required certs.");
+            DBG_INFO("TLS variable is writed protected and does not contain required certs.", NULL);
             goto Exit;
         }
     } else if (EFI_ERROR(Status)) {
@@ -251,7 +251,7 @@ EFI_STATUS EFIAPI TlsSetCACertList(_In_reads_(CertCount) CERT CertArray[], _In_ 
             DBG_ERROR("Unable to set CBMR TLS certificate(s). 0x%zx", Status);
         }
 
-        DBG_INFO("Successfully set TLS certificate(s).");
+        DBG_INFO("Successfully set TLS certificate(s).", NULL);
     }
 
 Exit:
@@ -315,7 +315,7 @@ EFI_STATUS EFIAPI TlsSetCACertListDebug()
     }
 
     if (CertCount == 0) {
-        DBG_INFO("No external certificates found.");
+        DBG_INFO("No external certificates found.", NULL);
         goto Exit;
     }
 
@@ -341,7 +341,7 @@ EFI_STATUS EFIAPI TlsSetCACertListDebug()
 
     LocalCert = Cert = AllocateZeroPool(CertDatabaseSize);
     if (Cert == NULL) {
-        DBG_ERROR("Out of memory.");
+        DBG_ERROR("Out of memory.", NULL);
         Status = EFI_OUT_OF_RESOURCES;
         goto Exit;
     }
@@ -484,7 +484,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                               &CertListSize,
                               NULL);
     if (Status == EFI_NOT_FOUND) {
-        DBG_INFO("Certificate list not present");
+        DBG_INFO("Certificate list not present", NULL);
         goto Exit;
     } else if (Status == EFI_BUFFER_TOO_SMALL && CertListSize != 0) {
         //
@@ -493,7 +493,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
 
         UefiVariableCertList = AllocateZeroPool(CertListSize);
         if (UefiVariableCertList == NULL) {
-            DBG_ERROR("Out of memory.");
+            DBG_ERROR("Out of memory.", NULL);
             Status = EFI_OUT_OF_RESOURCES;
             goto Exit;
         }
@@ -536,7 +536,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                     }
 
                     if (SignatureListOffset > CertListSize) {
-                        DBG_ERROR("Signature list is missing header");
+                        DBG_ERROR("Signature list is missing header", NULL);
                         goto Exit;
                     }
 
@@ -552,7 +552,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                     }
 
                     if (SignatureListOffset > CertListSize) {
-                        DBG_ERROR("Signature owner is missing");
+                        DBG_ERROR("Signature owner is missing", NULL);
                         goto Exit;
                     }
 
@@ -566,7 +566,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                                FIELD_OFFSET(EFI_SIGNATURE_DATA2, SignatureData);
 
                     if (CertSize == 0) {
-                        DBG_ERROR("Cert size cannot be 0!");
+                        DBG_ERROR("Cert size cannot be 0!", NULL);
                         goto Exit;
                     }
 
@@ -577,7 +577,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                     }
 
                     if (SignatureListOffset > CertListSize) {
-                        DBG_ERROR("SignatureListOffset exceeds variable size, bail out");
+                        DBG_ERROR("SignatureListOffset exceeds variable size, bail out", NULL);
                         goto Exit;
                     }
 
@@ -613,7 +613,7 @@ static BOOLEAN EFIAPI TlsUefiVariableContainsRequiredCerts(_In_reads_(CertCount)
                         IsPresent = TRUE;
                         break;
                     } else {
-                        DBG_INFO("Mismatching certs");
+                        DBG_INFO("Mismatching certs", NULL);
                     }
                 }
 
@@ -649,7 +649,7 @@ static EFI_STATUS EFIAPI TlsDeleteCACertList()
         //
         // Do nothing and proceed to setting the variable
         //
-        DBG_INFO("No stale TLS certificates found.");
+        DBG_INFO("No stale TLS certificates found.", NULL);
         Status = EFI_SUCCESS;
     } else if (Status == EFI_BUFFER_TOO_SMALL) {
         //
@@ -665,7 +665,7 @@ static EFI_STATUS EFIAPI TlsDeleteCACertList()
             DBG_ERROR("Deletion of stale TLS certificate(s) failed. 0x%zx", Status);
         }
 
-        DBG_INFO("Deleted stale TLS certificate(s)");
+        DBG_INFO("Deleted stale TLS certificate(s)", NULL);
     } else {
         DBG_ERROR("Query of TLS variable returned an unexpected status. 0x%zx", Status);
     }

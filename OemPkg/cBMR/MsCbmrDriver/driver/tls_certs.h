@@ -1,7 +1,9 @@
 #ifndef __TLS_CERTS_H__
 #define __TLS_CERTS_H__
 
+#ifndef UEFI_BUILD_SYSTEM
 #pragma const_seg("tls_certs")
+#endif
 
 // clang-format off
 
@@ -336,6 +338,8 @@ const unsigned char MicrosoftUpdateSecureServerCAExtOriginInt[] = {
 
 // clang-format on
 
+#ifndef UEFI_BUILD_SYSTEM
 #pragma const_seg()
+#endif
 
 #endif // __TLS_CERTS_H__

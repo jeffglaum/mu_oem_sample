@@ -21,7 +21,9 @@ Environment:
 --*/
 
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 #include "network_common.h"
 
 #include "protocols.h"
@@ -310,6 +312,8 @@ enum CBMR_PROTOCOL_INDEX {
     EFI_MAX_PROTOCOL_INDEX,
 };
 
+EFI_GUID NullGuid = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0} };
+
 PROTOCOL_INFO CbmrProtocolArray[] = {
 
     PROTO(&gEfiDevicePathFromTextProtocolGuid,               t("EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL")),
@@ -322,14 +326,14 @@ PROTOCOL_INFO CbmrProtocolArray[] = {
     SB_PROTO(&gEfiIp4ProtocolGuid,                           t("EFI_IP4_PROTOCOL"),                     &gEfiIp4ServiceBindingProtocolGuid,                t("EFI_IP4_SERVICE_BINDING_PROTOCOL")),
     PROTO(&gEfiLoadedImageProtocolGuid,                      t("EFI_LOADED_IMAGE_PROTOCOL")),
     PROTO(&gEfiSimpleFileSystemProtocolGuid,                 t("EFI_SIMPLE_FILE_SYSTEM_PROTOCOL")),
-    PROTO(&gEfiSimpleTextOutputProtocolGuid,                 t("EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL")),
+    PROTO(&gEfiSimpleTextOutProtocolGuid,                    t("EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL")),
     SB_PROTO(&gEfiTcp4ProtocolGuid,                          t("EFI_TCP4_PROTOCOL"),                    &gEfiTcp4ServiceBindingProtocolGuid,               t("EFI_TCP4_SERVICE_BINDING_PROTOCOL")),
     SB_PROTO(&gEfiTlsProtocolGuid,                           t("EFI_TLS_PROTOCOL"),                     &gEfiTlsServiceBindingProtocolGuid,                t("EFI_TLS_SERVICE_BINDING_PROTOCOL")),
     PROTO(&gEfiTlsConfigurationProtocolGuid,                 t("EFI_TLS_CONFIGURATION_PROTOCOL")),
     PROTO(&gEfiRamDiskProtocolGuid,                          t("EFI_RAM_DISK_PROTOCOL")),
 
 
-    // PROTO(&gEfiWirelessMacConnection2ProtocolGuid,        t("EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL")),
+    // PROTO(&gEfiWiFi2ProtocolGuid,                         t("EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL")),
     // PROTO(&gEfiSupplicantProtocolGuid,                    t("EFI_SUPPLICANT_PROTOCOL")),
     // PROTO(&gEfiLoadedImageDevicePathProtocolGuid,         t("EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL")),
     // PROTO(&gEfiBlockIo2ProtocolGuid,                      t("EFI_BLOCK_IO2_PROTOCOL")),
@@ -443,7 +447,7 @@ PROTOCOL_INFO CbmrProtocolArray[] = {
     // PROTO(&gEfiUsbIoProtocolGuid,                         t("EFI_USB_IO_PROTOCOL")),
     // PROTO(&gEfiUsbfnIoProtocolGuid,                       t("EFI_USBFN_IO_PROTOCOL")),
     // PROTO(&gEfiVlanConfigProtocolGuid,                    t("EFI_VLAN_CONFIG_PROTOCOL")),
-    // PROTO(&gEfiWirelessMacConnectionProtocolGuid,         t("EFI_WIRELESS_MAC_CONNECTION_PROTOCOL")),
+    // PROTO(&gEfiWiFi2ProtocolGuid,                         t("EFI_WIRELESS_MAC_CONNECTION_PROTOCOL")),
 };
 
 // clang-format on

@@ -23,7 +23,6 @@ Environment:
 #include "cbmrincludes.h"
 #include "protocols.h"
 #include "network_common.h"
-#include "efiusbinitprotocol.h"
 #include "error.h"
 
 EFI_STATUS
@@ -66,7 +65,7 @@ ProtocolOpenServiceBindingChildProtocol(_In_ EFI_SERVICE_BINDING_PROTOCOL* Servi
     PVOID RetProtocol = NULL;
 
     if (ServiceBindingProtocol == NULL) {
-        DBG_ERROR("ServiceBindingProtocol is null");
+        DBG_ERROR("ServiceBindingProtocol is null", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }

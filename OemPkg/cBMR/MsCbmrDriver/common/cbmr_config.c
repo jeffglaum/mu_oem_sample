@@ -25,7 +25,9 @@ Environment:
 //
 
 #include "cbmrincludes.h"
+#ifndef UEFI_BUILD_SYSTEM
 #include "strsafe.h"
+#endif
 
 //
 // Local includes
@@ -239,7 +241,7 @@ EFI_STATUS EFIAPI CbmrReadConfig(_In_ CHAR8* ConfigSection)
     if (gCbmrConfig.Url == NULL) {
         gCbmrConfig.Url = AllocateZeroPool(MAX_JSON_REQUEST_URL_SIZE);
         if (gCbmrConfig.Url == NULL) {
-            DBG_ERROR("Out of memory");
+            DBG_ERROR("Out of memory", NULL);
             Status = EFI_OUT_OF_RESOURCES;
             goto Exit;
         }
@@ -292,7 +294,7 @@ EFI_STATUS EFIAPI CbmrReadConfig(_In_ CHAR8* ConfigSection)
 
         LineLength = AsciiStrnLenS(Line, _countof(Line));
         if (LineLength == _countof(Line)) {
-            DBG_ERROR("Invalid line length");
+            DBG_ERROR("Invalid line length", NULL);
             Status = EFI_INVALID_PARAMETER;
             goto Exit;
         }

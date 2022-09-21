@@ -41,10 +41,10 @@ EFI_STATUS EFIAPI NetworkCommonInitStack()
 
     // Start network services
     // BUG 18825617: Remove dependency on MsNetworkDelay and generalize network initialization
-    Status = gBS->LocateProtocol(&gEfiMsNetworkDelayProtocolGuid, NULL, &Interface);
+    Status = gBS->LocateProtocol(&gMsNetworkDelayProtocolGuid, NULL, (void**)&Interface);
     if (Status == EFI_NOT_FOUND) {
         Status = gBS->InstallProtocolInterface(&Handle,
-                                               &gEfiMsNetworkDelayProtocolGuid,
+                                               &gMsNetworkDelayProtocolGuid,
                                                EFI_NATIVE_INTERFACE,
                                                NULL);
         if (EFI_ERROR(Status)) {
@@ -71,7 +71,7 @@ EFI_STATUS EFIAPI NetworkCommonInitStack()
             Status);
         Status = EFI_SUCCESS;
     } else {
-        DBG_INFO("network_init_network_stack: BootManagerPolicy protocol located");
+        DBG_INFO("network_init_network_stack: BootManagerPolicy protocol located", NULL);
 
         Status = gsBootMgrPolicy->ConnectDeviceClass(gsBootMgrPolicy,
                                                      &gEfiBootManagerPolicyConnectAllGuid);
@@ -139,9 +139,9 @@ BOOLEAN EFIAPI NetworkCommonIsEthernetHandle(_In_ EFI_HANDLE DeviceHandle)
     BOOLEAN FoundEthernetNicHandle = TRUE;
     for (UINTN j = 0; j < ProtocolBufferCount; j++) {
         if (CompareGuid((EFI_GUID*)ProtocolBuffer[j], &gEfiEapProtocolGuid) == TRUE ||
-            CompareGuid((EFI_GUID*)ProtocolBuffer[j], &gEfiWirelessMacConnectionProtocolGuid) ==
+            CompareGuid((EFI_GUID*)ProtocolBuffer[j], &gEfiWiFi2ProtocolGuid) ==
                 TRUE ||
-            CompareGuid((EFI_GUID*)ProtocolBuffer[j], &gEfiWirelessMacConnection2ProtocolGuid) ==
+            CompareGuid((EFI_GUID*)ProtocolBuffer[j], &gEfiWiFi2ProtocolGuid) ==
                 TRUE) {
             FoundEthernetNicHandle = FALSE;
             break;

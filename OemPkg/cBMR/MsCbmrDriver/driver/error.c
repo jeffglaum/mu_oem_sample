@@ -37,13 +37,13 @@ EFI_STATUS CbmrGetExtendedErrorInfo(_Inout_ PEFI_MS_CBMR_ERROR_DATA Data, _Inout
     EFI_STATUS Status = EFI_SUCCESS;
 
     if (gInternal == NULL) {
-        DBG_ERROR("Cbmr driver is not configured");
+        DBG_ERROR("Cbmr driver is not configured", NULL);
         Status = EFI_NOT_READY;
         goto Exit;
     }
 
     if (DataSize == NULL) {
-        DBG_ERROR("Invalid DataSize parameter");
+        DBG_ERROR("Invalid DataSize parameter", NULL);
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
     }
