@@ -1,0 +1,46 @@
+!IF 0
+
+Copyright (c) Microsoft Corporation
+
+Module Name:
+
+    sources
+
+Abstract:
+
+    This file specifies the target component being built and the list of
+    sources files needed to build that component. Also specifies optional
+    compiler switches and libraries that are unique for the component being
+    built.
+
+!ENDIF
+
+ALT_PROJECT=efi
+ALT_PROJECT_TARGET=.
+
+!include $(BASEDIR)\data\boot\efiboot.inc
+
+C_DEFINES=$(C_DEFINES) -DNO_INTERFACE_DECL
+
+C_DEFINES=$(C_DEFINES) -DDEBUGMODE
+
+#
+# Uncomment this define to generate .cod files
+#
+#USER_C_FLAGS=$(USER_C_FLAGS) /FAcs
+
+OBJDIR=efi
+
+TARGETEXTENSION=efi
+
+TARGET_DESTINATION=RETAIL
+
+!include ..\sources.inc
+
+BOOTAPPNAME=cbmr_driver_debug
+
+TARGETLIBS=$(TARGETLIBS) \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\xml\library\xmltreelib\$(O)\xmltree.lib \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\xml\library\xmltreequerylib\$(O)\xmltreequery.lib \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\common\$(OBJDIR)_min_debug\$(O)\cbmr_common_min_debug.lib \
+

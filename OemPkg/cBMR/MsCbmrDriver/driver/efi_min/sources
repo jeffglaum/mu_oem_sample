@@ -1,0 +1,57 @@
+!IF 0
+
+Copyright (c) Microsoft Corporation
+
+Module Name:
+
+    sources
+
+Abstract:
+
+    This file specifies the target component being built and the list of
+    sources files needed to build that component. Also specifies optional
+    compiler switches and libraries that are unique for the component being
+    built.
+
+!ENDIF
+
+NO_BOOTLIBS=1
+NO_NET_DEBUG=1
+
+ALT_PROJECT=efi
+ALT_PROJECT_TARGET=.
+
+!include $(BASEDIR)\data\boot\efiboot.inc
+
+C_DEFINES=$(C_DEFINES) -DNO_INTERFACE_DECL
+
+C_DEFINES=$(C_DEFINES) -DNO_BOOTLIBRARY_CALLS
+
+#
+# Uncomment this define to generate .cod files
+#
+#USER_C_FLAGS=$(USER_C_FLAGS) /FAcs
+
+OBJDIR=efi
+
+TARGETEXTENSION=efi
+
+TARGET_DESTINATION=RETAIL
+
+COREBOOTLIBS=\
+    $(MINWIN_PRIVATE_PRIV_SDK_LIB_PATH_L)\boot\$(OBJDIR)\iomgr.lib \
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\boot\bldrrtl.lib \
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\libcboot.lib \
+    $(ONECORE_EXTERNAL_SDK_LIB_PATH)\safecrtnt.lib \
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\rsa32k.lib \
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\symcrypt-$(BUILD_TYPE).lib \
+    $(ONECORE_INTERNAL_SDK_LIB_PATH)\tcglibb.lib \
+
+!include ..\sources.inc
+
+BOOTAPPNAME=cbmr_driver
+
+TARGETLIBS=$(TARGETLIBS) \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\xml\library\xmltreelib\$(O)\xmltree.lib \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\xml\library\xmltreequerylib\$(O)\xmltreequery.lib \
+    $(PROJECT_OBJ_ROOT)\boot\environ\app\cbmr\common\$(OBJDIR)_min\$(O)\cbmr_common_min.lib \

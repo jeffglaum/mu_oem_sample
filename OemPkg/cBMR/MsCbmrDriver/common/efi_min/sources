@@ -1,0 +1,45 @@
+!IF 0
+
+Copyright (c) Microsoft Corporation
+
+Module Name:
+
+    sources
+
+Abstract:
+
+    This file specifies the target component being built and the list of
+    sources files needed to build that component. Also specifies optional
+    compiler switches and libraries that are unique for the component being
+    built.
+
+!ENDIF
+
+NO_BOOTLIBS=1
+NO_NET_DEBUG=1
+
+ALT_PROJECT=efi
+ALT_PROJECT_TARGET=.
+
+!include $(BASEDIR)\data\boot\efiboot.inc
+
+#
+# Uncomment this define to generate .cod files
+#
+#USER_C_FLAGS=$(USER_C_FLAGS) /FAcs
+
+OBJDIR=efi
+
+TARGETEXTENSION=efi
+
+TARGET_DESTINATION=RETAIL
+
+COREBOOTLIBS=\
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\libcboot.lib \
+    $(ONECORE_EXTERNAL_SDK_LIB_PATH)\safecrtnt.lib \
+    $(MINWIN_INTERNAL_PRIV_SDK_LIB_PATH_L)\symcrypt-$(BUILD_TYPE).lib \
+
+!include ..\sources.inc
+
+TARGETNAME=$(LIBNAME)_min
+

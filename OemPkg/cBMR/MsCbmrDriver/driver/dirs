@@ -1,0 +1,4 @@
+DIRS=\
+    efi_min{!chpe} \
+    efi_min_debug{!chpe} \
+    kit \

@@ -1,0 +1,3 @@
+TARGETTYPE=NOTARGET
+SOURCES= \
+    cbmr.kml \

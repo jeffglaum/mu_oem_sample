@@ -1,0 +1,3 @@
+DIRS= \
+    efi_min \
+    efi_min_debug \

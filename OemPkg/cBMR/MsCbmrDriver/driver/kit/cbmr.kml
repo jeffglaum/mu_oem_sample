@@ -1,0 +1,18 @@
+﻿<?xml version='1.0' encoding='utf-8' standalone='yes'?>
+<Content xmlns="http://microsoft.com/schemas/Windows/Kits/Manifest">
+  <ContentGroup
+      BuildArchitecture="each"
+      BuildType="fre"
+      Destination="EFIFiles\$(_BuildArch)"
+      >
+    <FeatureReference Name="Windows System Kit Common"/>
+    <BinaryFile
+        Name="cbmr_driver.efi"
+        Source="$(OBJ_PATH)\..\efi_min\$(O)\"
+        />
+    <BinaryFile
+        Name="cbmr_driver_debug.efi"
+        Source="$(OBJ_PATH)\..\efi_min_debug\$(O)\"
+        />
+  </ContentGroup>
+</Content>

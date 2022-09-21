@@ -1,0 +1,39 @@
+!IF 0
+
+Copyright (c) Microsoft Corporation
+
+Module Name:
+
+    sources
+
+Abstract:
+
+    This file specifies the target component being built and the list of
+    sources files needed to build that component. Also specifies optional
+    compiler switches and libraries that are unique for the component being
+    built.
+
+!ENDIF
+
+ALT_PROJECT=efi
+ALT_PROJECT_TARGET=.
+
+!include $(BASEDIR)\data\boot\efiboot.inc
+
+C_DEFINES=$(C_DEFINES) -DDEBUGMODE
+
+#
+# Uncomment this define to generate .cod files
+#
+#USER_C_FLAGS=$(USER_C_FLAGS) /FAcs
+
+OBJDIR=efi
+
+TARGETEXTENSION=efi
+
+TARGET_DESTINATION=RETAIL
+
+!include ..\sources.inc
+
+TARGETNAME=$(LIBNAME)_min_debug
+

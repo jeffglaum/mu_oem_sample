@@ -1,0 +1,9 @@
+#ifndef _SAFE_ARITHMETIC_H_
+#define _SAFE_ARITHMETIC_H_
+
+EFI_STATUS EFIAPI UintnAdd(_In_ UINTN Arg1, _In_ UINTN Arg2, _Out_ UINTN* Sum);
+EFI_STATUS EFIAPI Uint32Add(_In_ UINT32 Arg1, _In_ UINT32 Arg2, _Out_ UINT32* Sum);
+EFI_STATUS EFIAPI UintnMult(_In_ UINTN Arg1, _In_ UINTN Arg2, _Out_ UINTN* Product);
+EFI_STATUS EFIAPI Uint32Mult(_In_ UINT32 Arg1, _In_ UINT32 Arg2, _Out_ UINT32* Product);
+
+#endif // _SAFE_ARITHMETIC_H_

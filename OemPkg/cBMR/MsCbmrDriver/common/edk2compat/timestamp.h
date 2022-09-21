@@ -1,0 +1,20 @@
+#ifndef _EDK2COMPAT_TIMESTAMP_H_
+#define _EDK2COMPAT_TIMESTAMP_H_
+
+// MdePkg\Include\Protocol\Timestamp.h
+
+typedef struct {
+    UINT64 Frequency;
+    UINT64 EndValue;
+} EFI_TIMESTAMP_PROPERTIES;
+
+typedef UINT64(EFIAPI* TIMESTAMP_GET)(VOID);
+
+typedef EFI_STATUS(EFIAPI* TIMESTAMP_GET_PROPERTIES)(OUT EFI_TIMESTAMP_PROPERTIES* Properties);
+
+typedef struct _EFI_TIMESTAMP_PROTOCOL {
+    TIMESTAMP_GET GetTimestamp;
+    TIMESTAMP_GET_PROPERTIES GetProperties;
+} EFI_TIMESTAMP_PROTOCOL;
+
+#endif // _EDK2COMPAT_TIMESTAMP_H_
