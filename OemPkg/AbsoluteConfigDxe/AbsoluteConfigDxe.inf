@@ -1,0 +1,52 @@
+## @file -- AbsoluteConfigDxe.inf
+#
+# This module is a sample DXE driver to install the Absolute configuration policy and initialize the feature.  It was
+# created based on the Absolute Persistence Module release version 2.7.0.90, please refer to the OEM Integration Guide
+# for the specific release being used.
+#
+# This driver can not be used without updates from the platform engineer, please search for the text [OEM TODO] for
+# locations that need examination prior to ingestion.
+#
+# Copyright (C) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION          = 0x00010005
+  BASE_NAME            = AbsoluteConfigDxe
+  FILE_GUID            = FA05C0D3-1E99-46BD-96DB-260704022019
+  MODULE_TYPE          = DXE_DRIVER
+  VERSION_STRING       = 1.0
+  ENTRY_POINT          = AbsoluteConfigDxeEntry
+
+[Sources]
+  AbsoluteConfigDxe.c
+  VariableHandler.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  OemPkg/OemPkg.dec
+  AbsolutePkg/AbsolutePkg.dec   # [OEM TODO]    The Absolute package must be downloaded and placed in the build
+                                #               environment within one of the package search paths.
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  MemoryAllocationLib
+  DebugLib
+  BaseLib
+  BaseMemoryLib
+
+[Guids]
+  gAbtVendorGuid
+  gAbtVariableGuid
+
+[Protocols]
+  gAbtConfigurationProtocolGuid
+
+[Pcd]
+
+[Depex]
+  gEfiVariableArchProtocolGuid
+

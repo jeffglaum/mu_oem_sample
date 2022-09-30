@@ -16,6 +16,20 @@
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
 
+
+
+  ########XXXX
+  ########XXXX
+  ########XXXX
+  ## Absolute support integration
+  !include AbsolutePkg/Platforms/Abt/Demo_EdkiiProt/Platform.dsc
+  !include AbsolutePkg/Extras/AbtLibraryClasses.dsc
+  ########XXXX
+  ########XXXX
+  ########XXXX
+
+
+
 [PcdsFeatureFlag]
 
 
@@ -142,6 +156,20 @@
   OemPkg/Library/OemMfciLib/OemMfciLibPei.inf
   OemPkg/Library/OemMfciLib/OemMfciLibDxe.inf
   OemPkg/FrontpageButtonsVolumeUp/FrontpageButtonsVolumeUp.inf
+
+
+
+  ########XXXX
+  ########XXXX
+  ########XXXX
+  ## Absolute support integration
+  !include AbsolutePkg/Extras/AbtComponents.dsc
+  QemuQ35Pkg/AbsoluteConfigDxe/AbsoluteConfigDxe.inf    ## Move To:  OemPkg/AbsoluteConfigDxe/AbsoluteConfigDxe.inf
+  ########XXXX
+  ########XXXX
+  ########XXXX
+
+
 
 [Components.IA32]
   OemPkg/DeviceStatePei/DeviceStatePei.inf
