@@ -15,7 +15,7 @@
 #include <Library/PrintLib.h>
 #include <Protocol/Shell.h>
 
-#include <Library/MsCbmrProcessSampleLib.h>
+#include <Library/CbmrProcessSampleLib.h>
 
 #define MAX_CMD_LINE_ARG_SIZE     128
 

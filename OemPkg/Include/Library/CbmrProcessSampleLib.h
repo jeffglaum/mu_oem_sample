@@ -1,4 +1,4 @@
-/** @file MsCbmrProcessSampleLib.h
+/** @file CbmrProcessSampleLib.h
 
   cBMR Process Sample Library
 
@@ -12,8 +12,7 @@
 #ifndef _CBMR_PROCESS_EXAMPLE_LIB__H_
 #define _CBMR_PROCESS_EXAMPLE_LIB__H_
 
-#include <Protocol/MsCloudBareMetalRecovery.h>
-
+#include <Protocol/CloudBareMetalRecovery.h>
 
 /**
   Primary entry point to the library to initiate the cBMR process
@@ -28,9 +27,12 @@
 EFI_STATUS
 EFIAPI
 ExecuteCbmrProcess (
-  IN BOOLEAN                        UseWiFi,
-  IN CHAR8                          *SSIdName,          OPTIONAL
-  IN CHAR8                          *SSIdPwd,           OPTIONAL
-  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback);  OPTIONAL
+  IN BOOLEAN UseWiFi,
+  IN CHAR8 *SSIdName, OPTIONAL
+  IN CHAR8                          *SSIdPwd, OPTIONAL
+  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback
+  );OPTIONAL
+
+
 
 #endif // _CBMR_PROCESS_EXAMPLE_LIB__H_

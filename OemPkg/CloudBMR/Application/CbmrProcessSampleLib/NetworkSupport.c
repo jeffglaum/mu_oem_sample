@@ -430,10 +430,9 @@ WaitForIpAddress (
 **/
 EFI_STATUS
 EFIAPI
-ConnectToNetwork ()
+ConnectToNetwork (EFI_IP4_CONFIG2_INTERFACE_INFO **InterfaceInfo)
 {
   EFI_IP4_CONFIG2_PROTOCOL *Ip4Config2Protocol;
-  EFI_IP4_CONFIG2_INTERFACE_INFO *InterfaceInfo;
   EFI_STATUS Status;
 
   //
@@ -458,7 +457,7 @@ ConnectToNetwork ()
   // Wait for a valid IP address from the server
   //
 
-  Status = WaitForIpAddress(Ip4Config2Protocol, &InterfaceInfo);
+  Status = WaitForIpAddress(Ip4Config2Protocol, InterfaceInfo);
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -467,8 +466,8 @@ ConnectToNetwork ()
   // Report the configuration of the network
   //
 
-  DebugPrintNetworkInfo (Ip4Config2Protocol, InterfaceInfo);
-  FreePool(InterfaceInfo);
+  DebugPrintNetworkInfo (Ip4Config2Protocol, *InterfaceInfo);
+  //FreePool(InterfaceInfo);
   return EFI_SUCCESS;
 }
 

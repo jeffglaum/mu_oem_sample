@@ -15,7 +15,7 @@
   ENTRY_POINT                    = CbmrSampleShellAppEntry
 
 [Sources]
-  MsCbmrSampleShellApp.c
+  CbmrSampleShellApp.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -29,7 +29,7 @@
   UefiLib
   DebugLib
   ShellLib
-  MsCbmrProcessSampleLib
+  CbmrProcessSampleLib
 
 [Protocols]
   gEfiShellParametersProtocolGuid

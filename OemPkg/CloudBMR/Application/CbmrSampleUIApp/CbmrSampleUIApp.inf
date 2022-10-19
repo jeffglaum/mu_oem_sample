@@ -9,7 +9,7 @@
 
 [Defines]
   INF_VERSION                    = 1.25
-  BASE_NAME                      = CbmrApp
+  BASE_NAME                      = CbmrSampleUIApp
   FILE_GUID                      = 3edbaac4-5017-4870-8cc4-721f9ef1974f
   MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
@@ -21,12 +21,10 @@
 #
 
 [Sources]
-  CbmrUi.c
-  CbmrApp.c
-  graphics_common.c
-  wifi_cm.c
-  CbmrAppStrings.uni
-  CbmrAppVfr.vfr
+  CbmrSampleUIApp.c
+  CbmrSampleUIAppGraphics.c 
+  CbmrSampleUIAppWindow.c
+  CbmrSampleUIAppWiFiDialog.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -45,9 +43,12 @@
   MemoryAllocationLib
   SortLib
   DebugLib
-#  NetLib
-  HiiLib
   UIToolKitLib
+  DxeServicesLib
+  BmpSupportLib
+  MsUiThemeLib
+  MsColorTableLib
+  CbmrProcessSampleLib
 
 [Guids]
   gEfiFileSystemInfoGuid
@@ -68,20 +69,14 @@
   gEfiBlockIoProtocolGuid
   gEfiPartitionInfoProtocolGuid
   gEfiIp4Config2ProtocolGuid
-  gEfiPartitionRecordGuid
-  gEfiHiiConfigAccessProtocolGuid               ## PROTOCOL CONSUMES
-  gEfiFormBrowser2ProtocolGuid                  ## PROTOCOL CONSUMES
   gMsSWMProtocolGuid                            ## PROTOCOL CONSUMES
+  gEfiSimpleTextInputExProtocolGuid
 
 [FeaturePcd]
 
 [Pcd]
-  gOemPkgTokenSpaceGuid.PcdCbmrShowWiFiUX
-  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiSid
-  gOemPkgTokenSpaceGuid.PcdCbmrDefaultWifiPwd
   gMsGraphicsPkgTokenSpaceGuid.PcdCurrentPointerState
+  gOemPkgTokenSpaceGuid.PcdCloudBMRCompanyLogoFile
 
 [BuildOptions]
 
-  # Override MSFT build option to remove /GL
-  MSFT:*_*_*_CC_FLAGS          = /GL- /WX-

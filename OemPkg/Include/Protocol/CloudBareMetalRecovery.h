@@ -115,6 +115,7 @@ typedef struct _EFI_MS_CBMR_PROGRESS {
     union {
         EFI_MS_CBMR_COLLATERALS_DOWNLOAD_PROGRESS DownloadProgress;
         // Data related to each phase of CBMR will go in its own struct here
+        //EFI_IP4_CONFIG2_INTERFACE_INFO InterfaceInfo;
     } ProgressData;
 } EFI_MS_CBMR_PROGRESS, *PEFI_MS_CBMR_PROGRESS;
 

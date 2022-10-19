@@ -1,4 +1,4 @@
-/** @file MsCbmrProcessSampleLib.c
+/** @file CbmrProcessSampleLib.c
 
   cBMR Process Sample Library
 
@@ -119,6 +119,7 @@ ExecuteCbmrProcess (
 {
   EFI_MS_CBMR_PROTOCOL *CbmrProtocol;
   EFI_STATUS Status;
+  EFI_IP4_CONFIG2_INTERFACE_INFO *InterfaceInfo;
 
   //
   // Input check
@@ -145,21 +146,10 @@ ExecuteCbmrProcess (
   }
 
   //
-  // Connect to WiFi access point if requested
+  // Try connecting to either a wired LAN or a wireless network.
   //
-
-  if (UseWiFi) {
-    Status = ConnectToWiFiAccessPoint (SSIdName, SSIdPwd);
-    if (EFI_ERROR (Status)) {
-      return Status;
-    }
-  }
-
-  //
-  // Request a network connection
-  //
-
-  Status = ConnectToNetwork();
+  Status = (UseWiFi ? ConnectToWiFiAccessPoint (SSIdName, SSIdPwd) : ConnectToNetwork(&InterfaceInfo));
+  
   if (EFI_ERROR (Status)) {
     return Status;
   }

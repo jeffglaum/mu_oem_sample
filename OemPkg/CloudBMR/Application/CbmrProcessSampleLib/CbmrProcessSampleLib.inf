@@ -1,4 +1,4 @@
-## @file MsCbmrProcessSampleLib.inf
+## @file CbmrProcessSampleLib.inf
 #
 #  cBMR Process Sample Library
 #
@@ -11,14 +11,14 @@
 
 [Defines]
   INF_VERSION                    = 0x00010017
-  BASE_NAME                      = MsCbmrProcessSampleLib
+  BASE_NAME                      = CbmrProcessSampleLib
   FILE_GUID                      = 490ED6D9-4654-47B7-B1DC-3294BAEA7E09
   MODULE_TYPE                    = DXE_DRIVER
   VERSION_STRING                 = 1.0
-  LIBRARY_CLASS                  = MsCbmrProcessSampleLib|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_APPLICATION UEFI_DRIVER
+  LIBRARY_CLASS                  = CbmrProcessSampleLib|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_APPLICATION UEFI_DRIVER
 
 [Sources]
-  MsCbmrProcessSampleLib.c
+  CbmrProcessSampleLib.c
   CbmrDriverSupport.c
   NetworkSupport.c
   WiFiSupport.c

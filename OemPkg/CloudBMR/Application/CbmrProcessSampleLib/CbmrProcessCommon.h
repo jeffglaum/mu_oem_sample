@@ -25,8 +25,8 @@
 #include <Protocol/WiFi2.h>
 #include <Protocol/Shell.h>
 
-#include <Protocol/MsCloudBareMetalRecovery.h>
-#include <Library/MsCbmrProcessSampleLib.h>
+#include <Protocol/CloudBareMetalRecovery.h>
+#include <Library/CbmrProcessSampleLib.h>
 
 
 /**
@@ -50,7 +50,9 @@ ConnectToWiFiAccessPoint (
 **/
 EFI_STATUS
 EFIAPI
-ConnectToNetwork ();
+ConnectToNetwork (EFI_IP4_CONFIG2_INTERFACE_INFO **InterfaceInfo);
+
+
 
 /**
   Locates the cBMR protocol and verifies the driver's revision matches the protocol being used in this compilation.
