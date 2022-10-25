@@ -1,4 +1,4 @@
-/** @file CbmrSampleUIApp.c
+/** @file CbmrApp.c
 
   cBMR Sample Application with User Interface
 
@@ -8,7 +8,7 @@
   The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
 **/
 
-#include "CbmrSampleUIApp.h"
+#include "CbmrApp.h"
 
 #define SSID_MAX_NAME_LENGTH      64
 #define SSID_MAX_PASSWORD_LENGTH  64
@@ -19,9 +19,9 @@
     0x567d4f03, 0x6ff1, 0x45cd, { 0x8f, 0xc5, 0x9f, 0x19, 0x2b, 0xc1, 0x45, 0x0b } \
 }
 
-PEFI_MS_CBMR_COLLATERAL  gCbmrCollaterals     = NULL;
-UINTN                    gNumberOfCollaterals = 0;
-UINTN                    gAllCollateralsSize  = 0;       // This is the sum of all collaterals fully downloaded size
+PEFI_MS_CBMR_COLLATERAL  gCbmrCollaterals           = NULL;
+UINTN                    gNumberOfCollaterals       = 0;
+UINTN                    gAllCollateralsSize        = 0; // This is the sum of all collaterals fully downloaded size
 UINTN                    gAllCollateralsRunningSize = 0; // This is the sum of all currently downloaded/downloading
                                                          // collaterals size
 EFI_HANDLE       gDialogHandle = NULL;
@@ -39,8 +39,8 @@ static EFI_GUID  gDialogGuid   = CBMR_APP_DIALOG_PROTOCOL_GUID;
 EFI_STATUS
 EFIAPI
 CbmrAppProgressCallback (
-  IN PEFI_MS_CBMR_PROTOCOL This,
-  IN EFI_MS_CBMR_PROGRESS  *Progress
+  IN PEFI_MS_CBMR_PROTOCOL  This,
+  IN EFI_MS_CBMR_PROGRESS   *Progress
   )
 {
   // CHAR16  GenericString[64];
@@ -75,11 +75,11 @@ CbmrAppProgressCallback (
       // UnicodeSPrint (GenericString, sizeof (GenericString), L"%d", Progress->ProgressData.DownloadProgress.CollateralIndex);
       // CbmrUIUpdateLabelValue (DownloadFileCount, GenericString);
  #if 0
-        UINTN  PerCollateralRunningSize = Progress->ProgressData.DownloadProgress
-                                            .CollateralDownloadedSize;
-        UINTN  PerCollateralSize = gCbmrCollaterals[CollateralIndex].CollateralSize;
-        UINTN  PerCollateralProgressPercentage = (100 * PerCollateralRunningSize) /
-                                                 PerCollateralSize;
+      UINTN  PerCollateralRunningSize = Progress->ProgressData.DownloadProgress
+                                          .CollateralDownloadedSize;
+      UINTN  PerCollateralSize               = gCbmrCollaterals[CollateralIndex].CollateralSize;
+      UINTN  PerCollateralProgressPercentage = (100 * PerCollateralRunningSize) /
+                                               PerCollateralSize;
  #endif
 
       // UINTN  AllCollateralsRunningSize = gAllCollateralsRunningSize + PerCollateralRunningSize;
@@ -129,13 +129,13 @@ CbmrAppProgressCallback (
 EFI_STATUS
 EFIAPI
 CbmrAppEntry (
-  IN EFI_HANDLE       ImageHandle,
-  IN EFI_SYSTEM_TABLE *SystemTable
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS                      Status = EFI_SUCCESS;
-  UINT32                          PreviousMode  = 0;
-  Canvas                          *WindowCanvas = NULL;
+  EFI_STATUS                      Status             = EFI_SUCCESS;
+  UINT32                          PreviousMode       = 0;
+  Canvas                          *WindowCanvas      = NULL;
   BOOLEAN                         bUseWiFiConnection = FALSE;
   CHAR8                           SSIDNameA[SSID_MAX_NAME_LENGTH];
   CHAR8                           SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
@@ -192,7 +192,7 @@ CbmrAppEntry (
   // Ready.  Wait for user input to either proceed or cancel.
   //
 
-  CbmrUIUpdateLabelValue (cBMRState, L"Ready.");
+  CbmrUIUpdateLabelValue (cBMRState, L"Ready");
 
   SWM_MB_RESULT  Result = CbmrUIWindowMessageHandler (
                             WindowCanvas

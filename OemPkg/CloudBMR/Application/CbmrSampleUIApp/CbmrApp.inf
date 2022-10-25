@@ -1,0 +1,89 @@
+## @file
+#  CBMR App
+#
+#  Copyright (c) 2021 Microsoft Corporation
+#
+#  License for UEFI CBMR App
+#
+##
+
+[Defines]
+  INF_VERSION                    = 1.25
+  BASE_NAME                      = CbmrSampleUIApp
+  FILE_GUID                      = 3edbaac4-5017-4870-8cc4-721f9ef1974f
+  MODULE_TYPE                    = UEFI_APPLICATION
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = CbmrAppEntry
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC Etc...
+#
+
+[Sources]
+  CbmrApp.c
+  CbmrAppGraphics.c 
+  CbmrAppWindow.c
+  CbmrAppWiFiDialog.c
+  CbmrAppNetworkSupport.c
+  CbmrAppWiFiSupport.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  NetworkPkg/NetworkPkg.dec
+  OemPkg/OemPkg.dec
+  MsGraphicsPkg/MsGraphicsPkg.dec
+
+[LibraryClasses]
+  UefiApplicationEntryPoint
+  DevicePathLib
+  UefiLib
+  BaseLib
+  PrintLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  SortLib
+  DebugLib
+  UIToolKitLib
+  DxeServicesLib
+  BmpSupportLib
+  MsUiThemeLib
+  MsColorTableLib
+
+[Guids]
+  gEfiFileSystemInfoGuid
+  gEfiFileSystemVolumeLabelInfoIdGuid
+  gEfiFileInfoGuid
+
+[Ppis]
+
+[Protocols]
+  gEfiWiFi2ProtocolGuid                       ## PROTOCOL CONSUMES
+  gEfiSupplicantProtocolGuid                  ## PROTOCOL CONSUMES
+  gEfiLoadedImageProtocolGuid                 ## PROTOCOL CONSUMES
+  gEfiShellProtocolGuid                       ## PROTOCOL CONSUMES
+  gEfiDevicePathFromTextProtocolGuid          ## PROTOCOL CONSUMES
+  gEfiDevicePathUtilitiesProtocolGuid         ## PROTOCOL CONSUMES
+  gEfiDevicePathToTextProtocolGuid            ## PROTOCOL CONSUMES
+  gEfiSmbiosProtocolGuid                      ## PROTOCOL CONSUMES
+  gEfiBlockIoProtocolGuid                     ## PROTOCOL CONSUMES
+  gEfiPartitionInfoProtocolGuid               ## PROTOCOL CONSUMES
+  gEfiIp4Config2ProtocolGuid                  ## PROTOCOL CONSUMES
+  gMsSWMProtocolGuid                          ## PROTOCOL CONSUMES
+  gEfiSimpleTextInputExProtocolGuid           ## PROTOCOL CONSUMES
+  gEfiMsCbmrProtocolGuid                      ## PROTOCOL CONSUMES
+
+[FeaturePcd]
+
+[Pcd]
+  gMsGraphicsPkgTokenSpaceGuid.PcdCurrentPointerState
+  gOemPkgTokenSpaceGuid.PcdCloudBMRCompanyLogoFile
+  gOemPkgTokenSpaceGuid.PcdCbmrGetWifiNetworksTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrWifiNetworkConnectTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrSetDhcpPolicyTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkInterfaceInfoTimeout
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkIPAddressTimeout
+
+[BuildOptions]
+

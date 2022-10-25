@@ -1,4 +1,4 @@
-/** @file CbmrSampleUIApp.h
+/** @file CbmrApp.h
 
   cBMR Sample Application common definitions.
 
@@ -22,7 +22,6 @@
 #include <Library/PrintLib.h>
 #include <Library/SortLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/CbmrProcessSampleLib.h>
 
 #include <Protocol/Ip4Config2.h>
 #include <Protocol/Supplicant.h>
@@ -61,66 +60,68 @@ typedef enum {
 EFI_STATUS
 EFIAPI
 GfxSetGraphicsResolution (
-  OUT UINT32 *PreviousMode
+  OUT UINT32  *PreviousMode
   );
 
 EFI_STATUS
 EFIAPI
 GfxGetGraphicsResolution (
-  OUT UINT32 *Width,
-  OUT UINT32 *Height
+  OUT UINT32  *Width,
+  OUT UINT32  *Height
   );
 
 EFI_STATUS
 EFIAPI
 CbmrUICreateWindow (
-  Canvas **WindowCanvas
+  Canvas  **WindowCanvas
   );
 
 EFI_STATUS
 EFIAPI
 CbmrUIUpdateLabelValue (
-  CBMR_UI_DATA_LABEL_TYPE LabelType,
-  CHAR16                  *String
+  CBMR_UI_DATA_LABEL_TYPE  LabelType,
+  CHAR16                   *String
   );
 
 EFI_STATUS
 EFIAPI
 CbmrUIUpdateDownloadProgress (
-  UINT8 Percent
+  UINT8  Percent
   );
 
 SWM_MB_RESULT
 EFIAPI
 CbmrUIWindowMessageHandler (
-  Canvas *WindowCanvas
+  Canvas  *WindowCanvas
   );
 
 EFI_STATUS
 EFIAPI
-ConnectToNetwork (EFI_IP4_CONFIG2_INTERFACE_INFO **InterfaceInfo);
+ConnectToNetwork (
+  EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
+  );
 
 EFI_STATUS
 EFIAPI
 ConnectToWiFiAccessPoint (
   IN CHAR8  *SSIdName,
-  IN CHAR8  *SSIdPassword);
-  
+  IN CHAR8  *SSIdPassword
+  );
+
 EFI_STATUS
 EFIAPI
 CbmrUIGetSSIDAndPassword (
-  OUT CHAR16 *SSIDName,
-  IN UINT8  SSIDNameMaxLength,
-  OUT CHAR16 *SSIdPassword,
-  IN UINT8  SSIDPasswordMaxLength
+  OUT CHAR16  *SSIDName,
+  IN UINT8    SSIDNameMaxLength,
+  OUT CHAR16  *SSIdPassword,
+  IN UINT8    SSIDPasswordMaxLength
   );
 
 EFI_STATUS
 EFIAPI
 GetWiFiNetworkList (
   IN  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol,
-  OUT EFI_80211_GET_NETWORKS_RESULT             **NetworkInfoPtr);
-
-
+  OUT EFI_80211_GET_NETWORKS_RESULT            **NetworkInfoPtr
+  );
 
 #endif // _CBMR_SAMPLE_UI_APP_H_

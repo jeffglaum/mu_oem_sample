@@ -1,6 +1,6 @@
-/** @file WiFiSupport.c
+/** @file CbmrAppWiFiSupport.c
 
-  cBMR Process Sample Library
+    cBMR Sample Application Wi-Fi helper functions.
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -9,11 +9,13 @@
   specifically contains the primary entry function to initialize the WiFi access point.
 **/
 
-#include "CbmrProcessCommon.h"
+#include "CbmrApp.h"
 
 // Event used with the WiFi protocol
-EFI_EVENT gWiFiEvent = NULL;
+EFI_EVENT  gWiFiEvent = NULL;
 
+extern UINTN  PcdCbmrGetWifiNetworksTimeout;
+extern UINTN  PcdCbmrWifiNetworkConnectTimeout;
 
 /**
   WiFi event callback will close the event then clear the global event variable as a flag to the primary process flow
@@ -26,11 +28,12 @@ VOID
 EFIAPI
 WiFiEventCallback (
   IN EFI_EVENT  Event,
-  IN VOID       *Context)
+  IN VOID       *Context
+  )
 {
   // Close the initating event
   gBS->CloseEvent (Event);
-  
+
   // Confirm event matches our event, then NULL the global variable
   if (Event == gWiFiEvent) {
     gWiFiEvent = NULL;
@@ -46,25 +49,25 @@ WiFiEventCallback (
 EFI_STATUS
 EFIAPI
 WaitForWiFiEvent (
-  IN UINT32  TimeoutInSeconds)
+  IN UINT32  TimeoutInSeconds
+  )
 {
-  volatile EFI_EVENT *pEvent;
-  UINTN Timeout_uS;
+  volatile EFI_EVENT  *pEvent;
+  UINTN               Timeout_uS;
 
   // Init function vars
-  pEvent = &gWiFiEvent;
+  pEvent     = &gWiFiEvent;
   Timeout_uS = (UINTN)TimeoutInSeconds * 1000 * 1000;
 
   // Loop while the event has not triggered
   while (*pEvent != NULL) {
-
     // If a timeout, force the event closed and return
     if (Timeout_uS == 0) {
       return EFI_TIMEOUT;
     }
 
     // 10 mS stall before looping
-    gBS->Stall(10 * 1000);
+    gBS->Stall (10 * 1000);
     Timeout_uS -= (10 * 1000);
   }
 
@@ -82,14 +85,15 @@ WaitForWiFiEvent (
 **/
 VOID
 EFIAPI
-SSIdNameToStr(
+SSIdNameToStr (
   IN  EFI_80211_SSID  *SSIdStruct,
-  OUT CHAR8           *SSIdNameStr)
+  OUT CHAR8           *SSIdNameStr
+  )
 {
-  BOOLEAN Invalid = FALSE;
+  BOOLEAN  Invalid = FALSE;
 
   if (SSIdStruct->SSIdLen > EFI_MAX_SSID_LEN) {
-    Invalid = TRUE;
+    Invalid             = TRUE;
     SSIdStruct->SSIdLen = EFI_MAX_SSID_LEN;
   }
 
@@ -115,47 +119,50 @@ EFI_STATUS
 EFIAPI
 GetWiFiNetworkList (
   IN  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol,
-  OUT EFI_80211_GET_NETWORKS_RESULT             **NetworkInfoPtr)
+  OUT EFI_80211_GET_NETWORKS_RESULT            **NetworkInfoPtr
+  )
 {
-  EFI_80211_GET_NETWORKS_TOKEN GetNetworksToken;
-  EFI_80211_GET_NETWORKS_DATA GetNetworksData;
-  CHAR8 SSIdNameStr[EFI_MAX_SSID_LEN + 1];
-  EFI_STATUS Status;
+  EFI_80211_GET_NETWORKS_TOKEN  GetNetworksToken;
+  EFI_80211_GET_NETWORKS_DATA   GetNetworksData;
+  CHAR8                         SSIdNameStr[EFI_MAX_SSID_LEN + 1];
+  EFI_STATUS                    Status;
 
   DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
 
   // Create an event to be used with the WiFi2Protocol->GetNetworks().  Per spec the event must be EVT_NOTIFY_SIGNAL.
   gWiFiEvent = NULL;
-  Status = gBS->CreateEvent (EVT_NOTIFY_SIGNAL,
-                             TPL_CALLBACK,
-                             WiFiEventCallback,
-                             NULL,
-                             &gWiFiEvent);
+  Status     = gBS->CreateEvent (
+                      EVT_NOTIFY_SIGNAL,
+                      TPL_CALLBACK,
+                      WiFiEventCallback,
+                      NULL,
+                      &gWiFiEvent
+                      );
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
   // Setup the GetNetworks input structures
-  GetNetworksToken.Event = gWiFiEvent;
+  GetNetworksToken.Event  = gWiFiEvent;
   GetNetworksToken.Status = EFI_PROTOCOL_ERROR;
-  GetNetworksToken.Data = &GetNetworksData;
+  GetNetworksToken.Data   = &GetNetworksData;
   GetNetworksToken.Result = NULL;
 
   // The GetNetworksData structure is used to provide a list of hidden networks to look for
-  ZeroMem (&GetNetworksData, sizeof(GetNetworksData));
+  ZeroMem (&GetNetworksData, sizeof (GetNetworksData));
   GetNetworksData.NumOfSSID = 0;
 
   // Call the connection manager to retrieve the network list
   Status = WiFi2Protocol->GetNetworks (WiFi2Protocol, &GetNetworksToken);
 
   // On success, wait for the event indicating data is ready
-  if (!EFI_ERROR(Status)) {
-    Status = WaitForWiFiEvent (FixedPcdGet32(PcdCbmrGetWifiNetworksTimeout));
+  if (!EFI_ERROR (Status)) {
+    Status = WaitForWiFiEvent (FixedPcdGet32 (PcdCbmrGetWifiNetworksTimeout));
   }
 
   // If error in call or wait, close the event and return
-  if (EFI_ERROR(Status)) {
+  if (EFI_ERROR (Status)) {
     gBS->CloseEvent (gWiFiEvent);
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL::GetNetworks() - Status %r\n", Status));
     return Status;
@@ -167,6 +174,7 @@ GetWiFiNetworkList (
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_80211_GET_NETWORKS_TOKEN::Status %r\n", Status));
     return Status;
   }
+
   *NetworkInfoPtr = GetNetworksToken.Result;
 
   // Report the data found and return
@@ -175,8 +183,9 @@ GetWiFiNetworkList (
   DEBUG ((DEBUG_INFO, "    -------- | ----------\n"));
   for (UINTN i = 0; i < (*NetworkInfoPtr)->NumOfNetworkDesc; i++) {
     SSIdNameToStr (&((*NetworkInfoPtr)->NetworkDesc[i].Network.SSId), SSIdNameStr);
-    DEBUG((DEBUG_INFO, "      %3d%%   | %a\n", (*NetworkInfoPtr)->NetworkDesc[i].NetworkQuality, SSIdNameStr));
+    DEBUG ((DEBUG_INFO, "      %3d%%   | %a\n", (*NetworkInfoPtr)->NetworkDesc[i].NetworkQuality, SSIdNameStr));
   }
+
   return EFI_SUCCESS;
 }
 
@@ -192,45 +201,48 @@ EFI_STATUS
 EFIAPI
 AttemptWiFiConnection (
   IN EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol,
-  IN EFI_80211_NETWORK                        *Network)
+  IN EFI_80211_NETWORK                        *Network
+  )
 {
-  EFI_80211_CONNECT_NETWORK_TOKEN NetworkConnectToken;
-  EFI_80211_CONNECT_NETWORK_DATA NetworkConnectData;
-  EFI_STATUS Status;
+  EFI_80211_CONNECT_NETWORK_TOKEN  NetworkConnectToken;
+  EFI_80211_CONNECT_NETWORK_DATA   NetworkConnectData;
+  EFI_STATUS                       Status;
 
   DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
 
   // Create an event to be used with the WiFi2Protocol->ConnectNetwork().  Per spec the event must be EVT_NOTIFY_SIGNAL.
   gWiFiEvent = NULL;
-  Status = gBS->CreateEvent (EVT_NOTIFY_SIGNAL,
-                             TPL_CALLBACK,
-                             WiFiEventCallback,
-                             NULL,
-                             &gWiFiEvent);
+  Status     = gBS->CreateEvent (
+                      EVT_NOTIFY_SIGNAL,
+                      TPL_CALLBACK,
+                      WiFiEventCallback,
+                      NULL,
+                      &gWiFiEvent
+                      );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: CreateEvent( WiFiEvent ) - Status %r\n", Status));
     return Status;
   }
 
   // Setup the input parameters for the ConnectNetwork call
-  NetworkConnectToken.Event = gWiFiEvent;                                               // Event triggered when connection is finished
-  NetworkConnectToken.Status = EFI_TIMEOUT;                                             // Init return structure status code
-  NetworkConnectToken.Data = &NetworkConnectData;                                       // Connect token data structure
-  NetworkConnectToken.ResultCode = (EFI_80211_CONNECT_NETWORK_RESULT_CODE)-1;           // Init result to an undefined value to prove call changed the data
-  NetworkConnectData.Network = Network;                                                 // Info structure of network to connected to
-  NetworkConnectData.FailureTimeout = FixedPcdGet32(PcdCbmrWifiNetworkConnectTimeout);  // Set timeout value
+  NetworkConnectToken.Event         = gWiFiEvent;                                       // Event triggered when connection is finished
+  NetworkConnectToken.Status        = EFI_TIMEOUT;                                      // Init return structure status code
+  NetworkConnectToken.Data          = &NetworkConnectData;                              // Connect token data structure
+  NetworkConnectToken.ResultCode    = (EFI_80211_CONNECT_NETWORK_RESULT_CODE)-1;        // Init result to an undefined value to prove call changed the data
+  NetworkConnectData.Network        = Network;                                          // Info structure of network to connected to
+  NetworkConnectData.FailureTimeout = FixedPcdGet32 (PcdCbmrWifiNetworkConnectTimeout); // Set timeout value
 
   // Initiate the WiFi network connect
   Status = WiFi2Protocol->ConnectNetwork (WiFi2Protocol, &NetworkConnectToken);
 
   // On success, wait for the event indicating data is ready.  Use 1 second more than the timeout provided in the
   // NetworkConnectData structure to catch the error where the ConnectNetwork function may not timeout properly.
-  if (!EFI_ERROR(Status)) {
-    Status = WaitForWiFiEvent (FixedPcdGet32(PcdCbmrWifiNetworkConnectTimeout) + 1);
+  if (!EFI_ERROR (Status)) {
+    Status = WaitForWiFiEvent (FixedPcdGet32 (PcdCbmrWifiNetworkConnectTimeout) + 1);
   }
 
   // If error in call or wait, close the event and return
-  if (EFI_ERROR(Status)) {
+  if (EFI_ERROR (Status)) {
     gBS->CloseEvent (gWiFiEvent);
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL::ConnectNetwork() - Status %r\n", Status));
     return Status;
@@ -266,6 +278,7 @@ AttemptWiFiConnection (
       Status = EFI_PROTOCOL_ERROR;
       break;
   }
+
   return Status;
 }
 
@@ -281,14 +294,15 @@ EFI_STATUS
 EFIAPI
 ConnectToWiFiAccessPoint (
   IN CHAR8  *SSIdName,
-  IN CHAR8  *SSIdPassword)
+  IN CHAR8  *SSIdPassword
+  )
 {
-  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL *WiFi2Protocol;
-  EFI_SUPPLICANT_PROTOCOL *SupplicantProtocol;
-  EFI_80211_NETWORK_DESCRIPTION *NetworkDescription;
-  EFI_80211_GET_NETWORKS_RESULT *NetworkList;
-  CHAR8 SSIdNameStr[EFI_MAX_SSID_LEN + 1];
-  EFI_STATUS Status;
+  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol;
+  EFI_SUPPLICANT_PROTOCOL                  *SupplicantProtocol;
+  EFI_80211_NETWORK_DESCRIPTION            *NetworkDescription;
+  EFI_80211_GET_NETWORKS_RESULT            *NetworkList;
+  CHAR8                                    SSIdNameStr[EFI_MAX_SSID_LEN + 1];
+  EFI_STATUS                               Status;
 
   DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
 
@@ -296,14 +310,15 @@ ConnectToWiFiAccessPoint (
   // Locate the WiFi2 Network and Supplicant Protocols
   //
 
-  Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID**)&WiFi2Protocol);
+  Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID **)&WiFi2Protocol);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR(Status);
+    ASSERT_EFI_ERROR (Status);
     return Status;
   }
-  Status = gBS->LocateProtocol (&gEfiSupplicantProtocolGuid, NULL, (VOID**)&SupplicantProtocol);
+
+  Status = gBS->LocateProtocol (&gEfiSupplicantProtocolGuid, NULL, (VOID **)&SupplicantProtocol);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR(Status);
+    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -323,9 +338,8 @@ ConnectToWiFiAccessPoint (
 
   NetworkDescription = NULL;
   for (UINTN i = 0; i < NetworkList->NumOfNetworkDesc; i++) {
-
     SSIdNameToStr (&(NetworkList->NetworkDesc[i].Network.SSId), SSIdNameStr);
-    if (0 == AsciiStrCmp(SSIdName, SSIdNameStr)) {
+    if (0 == AsciiStrCmp (SSIdName, SSIdNameStr)) {
       NetworkDescription = &(NetworkList->NetworkDesc[i]);
     }
   }
@@ -341,11 +355,13 @@ ConnectToWiFiAccessPoint (
   //
 
   DEBUG ((DEBUG_INFO, "[cBMR] EFI_SUPPLICANT_PROTOCOL::SetData( SSID )\n"));
-  Status = SupplicantProtocol->SetData (SupplicantProtocol,
-                                        EfiSupplicant80211TargetSSIDName,
-                                        &(NetworkDescription->Network.SSId),
-                                        sizeof (EFI_80211_SSID));
-  if (EFI_ERROR(Status)) {
+  Status = SupplicantProtocol->SetData (
+                                 SupplicantProtocol,
+                                 EfiSupplicant80211TargetSSIDName,
+                                 &(NetworkDescription->Network.SSId),
+                                 sizeof (EFI_80211_SSID)
+                                 );
+  if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: Supplicant->SetData( EfiSupplicant80211TargetSSIDName ) - Status %r\n", Status));
     FreePool (NetworkList);
     return Status;
@@ -356,11 +372,13 @@ ConnectToWiFiAccessPoint (
   //
 
   DEBUG ((DEBUG_INFO, "[cBMR] EFI_SUPPLICANT_PROTOCOL::SetData( Password )\n"));
-  Status = SupplicantProtocol->SetData (SupplicantProtocol,
-                                        EfiSupplicant80211PskPassword,
-                                        SSIdPassword,
-                                        AsciiStrLen(SSIdPassword) + 1);
-  if (EFI_ERROR(Status)) {
+  Status = SupplicantProtocol->SetData (
+                                 SupplicantProtocol,
+                                 EfiSupplicant80211PskPassword,
+                                 SSIdPassword,
+                                 AsciiStrLen (SSIdPassword) + 1
+                                 );
+  if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: Supplicant->SetData( EfiSupplicant80211PskPassword ) - Status %r\n", Status));
     FreePool (NetworkList);
     return Status;
@@ -378,4 +396,3 @@ ConnectToWiFiAccessPoint (
 
   return EFI_SUCCESS;
 }
-

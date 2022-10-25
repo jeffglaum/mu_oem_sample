@@ -1,4 +1,4 @@
-/** @file CbmrSampleUIAppWindow.h
+/** @file CbmrAppWindow.h
 
   cBMR Sample Application main window routines.
 
@@ -7,7 +7,7 @@
 
   The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
 **/
-#include "CbmrSampleUIApp.h"
+#include "CbmrApp.h"
 
 #include <Pi/PiFirmwareFile.h>
 
@@ -75,9 +75,9 @@ EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *gSimpleTextInEx;
 Bitmap *
 EFIAPI
 CbmrUIFetchBitmap (
-  UINT32   OrigX,
-  UINT32   OrigY,
-  EFI_GUID *FileGuid
+  UINT32    OrigX,
+  UINT32    OrigY,
+  EFI_GUID  *FileGuid
   )
 {
   EFI_STATUS  Status = EFI_SUCCESS;
@@ -141,7 +141,7 @@ CbmrUIFetchBitmap (
 EFI_STATUS
 EFIAPI
 CbmrUIUpdateDownloadProgress (
-  UINT8 Percent
+  UINT8  Percent
   )
 {
   if (DownloadProgress == NULL) {
@@ -158,8 +158,8 @@ static
 EFI_STATUS
 EFIAPI
 CbmrUIFillRect (
-  SWM_RECT                      FillRect,
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL *FillColor
+  SWM_RECT                       FillRect,
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL  *FillColor
   )
 {
   return mSWMProtocol->BltWindow (
@@ -180,8 +180,8 @@ CbmrUIFillRect (
 EFI_STATUS
 EFIAPI
 CbmrUIUpdateLabelValue (
-  CBMR_UI_DATA_LABEL_TYPE LabelType,
-  CHAR16                  *String
+  CBMR_UI_DATA_LABEL_TYPE  LabelType,
+  CHAR16                   *String
   )
 {
   EFI_STATUS  Status = EFI_SUCCESS;
@@ -252,7 +252,7 @@ CbmrUIUpdateLabelValue (
 EFI_STATUS
 EFIAPI
 CbmrUICreateWindow (
-  Canvas **WindowCanvas
+  Canvas  **WindowCanvas
   )
 {
   EFI_STATUS  Status  = EFI_SUCCESS;
@@ -294,7 +294,7 @@ CbmrUICreateWindow (
 
   if (EFI_ERROR (Status)) {
     mSWMProtocol = NULL;
-    Status = EFI_UNSUPPORTED;
+    Status       = EFI_UNSUPPORTED;
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to find the window manager protocol (%r).\r\n", Status));
 
     goto Exit;
@@ -366,12 +366,12 @@ CbmrUICreateWindow (
 
   // Create a canvas for the main cBMR window.
   //
-  Canvas  *DialogCanvas = new_Canvas (
+  Canvas  *LocalWindowCanvas = new_Canvas (
                             WindowRect,
                             &gMsColorTable.FormCanvasBackgroundColor
                             );
 
-  if (NULL == DialogCanvas) {
+  if (NULL == LocalWindowCanvas) {
     Status = EFI_OUT_OF_RESOURCES;
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to create application canvas: %r.\r\n", Status));
     goto Exit;
@@ -380,10 +380,10 @@ CbmrUICreateWindow (
   // Grid
   SWM_RECT  TitleGridRect = { WindowRect.Left, WindowRect.Top, WindowRect.Right, (WindowRect.Top + 128) };
 
-  Grid  *TitleGrid = new_Grid (DialogCanvas, TitleGridRect, 1, 4, FALSE);
+  Grid  *TitleGrid = new_Grid (LocalWindowCanvas, TitleGridRect, 1, 4, FALSE);
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
                   FALSE,               // Not highlightable.
                   TRUE,                // Invisible.
                   (VOID *)TitleGrid
@@ -431,10 +431,10 @@ CbmrUICreateWindow (
   // Stage Grid
   SWM_RECT  StageGridRect = { WindowRect.Left, (WindowRect.Top + 128), WindowRect.Right, (WindowRect.Top + 192) };
 
-  Grid  *StageGrid = new_Grid (DialogCanvas, StageGridRect, 3, 4, FALSE);
+  Grid  *StageGrid = new_Grid (LocalWindowCanvas, StageGridRect, 3, 4, FALSE);
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
                   FALSE,               // Not highlightable.
                   TRUE,                // Invisible.
                   (VOID *)StageGrid
@@ -446,18 +446,18 @@ CbmrUICreateWindow (
 
   cBMRUIDataLabels.cBMRState = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
   StageGrid->AddControl (StageGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.cBMRState);
-  cBMRUIDataLabels.DownloadFileCount = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.DownloadFileCount = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   StageGrid->AddControl (StageGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.DownloadFileCount);
-  cBMRUIDataLabels.DownloadTotalSize = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.DownloadTotalSize = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   StageGrid->AddControl (StageGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.DownloadTotalSize);
 
   // Grid
   SWM_RECT  NetworkStatusGridRect = { WindowRect.Left, (WindowRect.Top + 220), WindowRect.Right, (WindowRect.Top + 348) };
 
-  Grid  *NetworkStatusGrid = new_Grid (DialogCanvas, NetworkStatusGridRect, 6, 4, FALSE);
+  Grid  *NetworkStatusGrid = new_Grid (LocalWindowCanvas, NetworkStatusGridRect, 6, 4, FALSE);
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
                   FALSE,               // Not highlightable.
                   TRUE,                // Invisible.
                   (VOID *)NetworkStatusGrid
@@ -470,32 +470,32 @@ CbmrUICreateWindow (
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Gateway:"));
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"DNS Server:"));
 
-  cBMRUIDataLabels.NetworkState = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkState = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Disconnected");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.NetworkState);
-  cBMRUIDataLabels.NetworkSSID = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkSSID = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.NetworkSSID);
-  cBMRUIDataLabels.NetworkPolicy = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkPolicy = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.NetworkPolicy);
-  cBMRUIDataLabels.NetworkIPAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkIPAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 2, (VOID *)cBMRUIDataLabels.NetworkIPAddr);
-  cBMRUIDataLabels.NetworkGatewayAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkGatewayAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 2, (VOID *)cBMRUIDataLabels.NetworkGatewayAddr);
-  cBMRUIDataLabels.NetworkDNSAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  cBMRUIDataLabels.NetworkDNSAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 2, (VOID *)cBMRUIDataLabels.NetworkDNSAddr);
 
   // Grid
   SWM_RECT  DownloadProgressGridRect = { WindowRect.Left, (WindowRect.Top + 378), WindowRect.Right, (WindowRect.Top + 506) };
 
-  Grid  *DownloadProgressGrid = new_Grid (DialogCanvas, DownloadProgressGridRect, 6, 4, FALSE);
+  Grid  *DownloadProgressGrid = new_Grid (LocalWindowCanvas, DownloadProgressGridRect, 6, 4, FALSE);
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
                   FALSE,               // Not highlightable.
                   TRUE,                // Invisible.
                   (VOID *)DownloadProgressGrid
                   );
 
-  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Downloading:"));
+  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Download %"));
 
   // Progress Bar
   DownloadProgress = new_ProgressBar (0, 0, 250, 5, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.MasterFrameBackgroundColor, 0);
@@ -518,10 +518,10 @@ CbmrUICreateWindow (
                         (VOID *)(UINTN)SWM_MB_IDOK
                         );
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
-                  FALSE,                // Not highlightable.
-                  FALSE,                // Visible.
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
+                  TRUE,                // Highlightable.
+                  FALSE,               // Visible.
                   (VOID *)GoButton
                   );
 
@@ -542,14 +542,24 @@ CbmrUICreateWindow (
                             (VOID *)(UINTN)SWM_MB_IDCANCEL
                             );
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
-                  FALSE,                // Not highlightable.
-                  FALSE,                // Visible.
+  LocalWindowCanvas->AddControl (
+                  LocalWindowCanvas,
+                  TRUE,                // Highlightable.
+                  FALSE,               // Visible.
                   (VOID *)CancelButton
                   );
 
-  *WindowCanvas = DialogCanvas;
+  LocalWindowCanvas->SetHighlight (
+                  LocalWindowCanvas,
+                  GoButton
+                  );
+
+  LocalWindowCanvas->SetDefaultControl (
+                  LocalWindowCanvas,
+                  (VOID *)GoButton
+                  );
+
+  *WindowCanvas = LocalWindowCanvas;
 
 Exit:
 
@@ -559,15 +569,15 @@ Exit:
 static
 SWM_MB_RESULT
 ProcessWindowInput (
-  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL *this,
-  IN  Canvas                            *WindowCanvas,
-  IN  EFI_ABSOLUTE_POINTER_PROTOCOL     *PointerProtocol,
-  IN  UINT64                            Timeout
+  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *this,
+  IN  Canvas                             *WindowCanvas,
+  IN  EFI_ABSOLUTE_POINTER_PROTOCOL      *PointerProtocol,
+  IN  UINT64                             Timeout
   )
 {
   EFI_STATUS       Status = EFI_SUCCESS;
   UINTN            Index;
-  OBJECT_STATE     State = NORMAL;
+  OBJECT_STATE     State        = NORMAL;
   SWM_MB_RESULT    ButtonResult = 0;
   VOID             *pContext    = NULL;
   SWM_INPUT_STATE  InputState;
@@ -598,8 +608,6 @@ ProcessWindowInput (
     //
     if (SELECT == State) {
       // Determine which button was pressed by the context returned.
-      //
-      // TODO - avoid having to cast a constant value from a pointer.
       //
       ButtonResult = (SWM_MB_RESULT)(UINTN)pContext;
 
@@ -640,11 +648,58 @@ ProcessWindowInput (
           break;
         }
 
-        // If the user pressed Enter, proceed with cBMR.
+        // If user pressed SHIFT-TAB, move the highlight to the previous control.
         //
-        if (CHAR_CARRIAGE_RETURN == InputState.State.KeyState.Key.UnicodeChar) {
-          ButtonResult = SWM_MB_IDOK;
-          break;
+        if ((CHAR_TAB == InputState.State.KeyState.Key.UnicodeChar) && (0 != (InputState.State.KeyState.KeyState.KeyShiftState & (EFI_LEFT_SHIFT_PRESSED | EFI_RIGHT_SHIFT_PRESSED)))) {
+          // Send the key to the form canvas for processing.
+          //
+          Status = WindowCanvas->MoveHighlight (
+                                   WindowCanvas,
+                                   FALSE
+                                   );
+
+          // If the highlight moved past the top control, clear control highlight and try again - this will wrap the highlight around
+          // to the bottom.  The reason we don't do this automatically is because in other
+          // scenarios, the TAB order needs to include controls outside the canvas (ex:
+          // the Front Page's Top-Menu.
+          //
+          if (EFI_NOT_FOUND == Status) {
+            WindowCanvas->ClearHighlight (WindowCanvas);
+
+            Status = WindowCanvas->MoveHighlight (
+                                     WindowCanvas,
+                                     FALSE
+                                     );
+          }
+
+          continue;
+        }
+
+        // If user pressed TAB, move the highlight to the next control.
+        //
+        if (CHAR_TAB == InputState.State.KeyState.Key.UnicodeChar) {
+          // Send the key to the form canvas for processing.
+          //
+          Status = WindowCanvas->MoveHighlight (
+                                   WindowCanvas,
+                                   TRUE
+                                   );
+
+          // If we moved the highlight to the end of the list of controls, move it back
+          // to the top by clearing teh current highlight and moving to next.  The reason we don't do
+          // this automatically is because in other scenarios, the TAB order needs to include controls
+          // outside the canvas (ex: the Front Page's Top-Menu.
+          //
+          if (EFI_NOT_FOUND == Status) {
+            WindowCanvas->ClearHighlight (WindowCanvas);
+
+            Status = WindowCanvas->MoveHighlight (
+                                     WindowCanvas,
+                                     TRUE
+                                     );
+          }
+
+          continue;
         }
 
         break;
@@ -682,7 +737,7 @@ ProcessWindowInput (
 SWM_MB_RESULT
 EFIAPI
 CbmrUIWindowMessageHandler (
-  Canvas *WindowCanvas
+  Canvas  *WindowCanvas
   )
 {
   return ProcessWindowInput (

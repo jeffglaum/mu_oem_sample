@@ -1,4 +1,4 @@
-/** @file CbmrSampleUIAppWindow.h
+/** @file CbmrAppWiFiDialog.c
 
   cBMR Sample Application Wi-Fi dialog routines.
 
@@ -7,7 +7,7 @@
 
   The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
 **/
-#include "CbmrSampleUIApp.h"
+#include "CbmrApp.h"
 
 #include <Pi/PiFirmwareFile.h>
 
@@ -54,8 +54,8 @@ static
 EFI_STATUS
 EFIAPI
 CbmrUIFillRect (
-  SWM_RECT                      FillRect,
-  EFI_GRAPHICS_OUTPUT_BLT_PIXEL *FillColor
+  SWM_RECT                       FillRect,
+  EFI_GRAPHICS_OUTPUT_BLT_PIXEL  *FillColor
   )
 {
   return mSWMProtocol->BltWindow (
@@ -76,9 +76,9 @@ CbmrUIFillRect (
 static EFI_STATUS
 EFIAPI
 CbmrUICreateWiFiDialog (
-  SWM_RECT        *DialogFrame,
-  UIT_LB_CELLDATA *WifiOptionCells,
-  Canvas          **pDialogCanvas
+  SWM_RECT         *DialogFrame,
+  UIT_LB_CELLDATA  *WifiOptionCells,
+  Canvas           **pDialogCanvas
   )
 {
   EFI_STATUS  Status = EFI_SUCCESS;
@@ -216,15 +216,15 @@ Exit:
 static
 SWM_MB_RESULT
 ProcessDialogInput (
-  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL *this,
-  IN  Canvas                            *DialogCanvas,
-  IN  EFI_ABSOLUTE_POINTER_PROTOCOL     *PointerProtocol,
-  IN  UINT64                            Timeout
+  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *this,
+  IN  Canvas                             *DialogCanvas,
+  IN  EFI_ABSOLUTE_POINTER_PROTOCOL      *PointerProtocol,
+  IN  UINT64                             Timeout
   )
 {
   EFI_STATUS       Status = EFI_SUCCESS;
   UINTN            Index;
-  OBJECT_STATE     State = NORMAL;
+  OBJECT_STATE     State        = NORMAL;
   SWM_MB_RESULT    ButtonResult = 0;
   VOID             *pContext    = NULL;
   SWM_INPUT_STATE  InputState;
@@ -255,8 +255,6 @@ ProcessDialogInput (
     //
     if (SELECT == State) {
       // Determine which button was pressed by the context returned.
-      //
-      // TODO - avoid having to cast a constant value from a pointer.
       //
       ButtonResult = (SWM_MB_RESULT)(UINTN)pContext;
 
@@ -386,13 +384,13 @@ ProcessDialogInput (
 EFI_STATUS
 EFIAPI
 CbmrUIGetSSIDAndPassword (
-  OUT CHAR16 *SSIDName,
-  IN UINT8   SSIDNameMaxLength,
-  OUT CHAR16 *SSIDPassword,
-  IN UINT8   SSIDPasswordMaxLength
+  OUT CHAR16  *SSIDName,
+  IN UINT8    SSIDNameMaxLength,
+  OUT CHAR16  *SSIDPassword,
+  IN UINT8    SSIDPasswordMaxLength
   )
 {
-  EFI_STATUS  Status = EFI_SUCCESS;
+  EFI_STATUS  Status           = EFI_SUCCESS;
   Canvas      *WiFDialogCanvas = NULL;
 
   // Locate the Simple Window Manager protocol.
@@ -405,7 +403,7 @@ CbmrUIGetSSIDAndPassword (
 
   if (EFI_ERROR (Status)) {
     mSWMProtocol = NULL;
-    Status = EFI_UNSUPPORTED;
+    Status       = EFI_UNSUPPORTED;
     DEBUG ((DEBUG_ERROR, "ERROR [FP]: Failed to find the window manager protocol (%r).\r\n", Status));
     goto Exit;
   }
@@ -425,11 +423,11 @@ CbmrUIGetSSIDAndPassword (
   }
 
  #if 0
-    UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool (4 * sizeof (UIT_LB_CELLDATA));
-    if (WifiOptionCells == NULL) {
-      Status = EFI_OUT_OF_RESOURCES;
-      goto Exit;
-    }
+  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool (4 * sizeof (UIT_LB_CELLDATA));
+  if (WifiOptionCells == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
 
  #endif
 
@@ -441,22 +439,22 @@ CbmrUIGetSSIDAndPassword (
     { L"Four",  FALSE, FALSE }
   };
  #if 0
-    Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID **)&WiFi2Protocol);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate WiFi2 protocol (%r).\r\n", Status));
-      goto Exit;
-    }
+  Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID **)&WiFi2Protocol);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate WiFi2 protocol (%r).\r\n", Status));
+    goto Exit;
+  }
 
-    //
-    // Retrieve an EFI_80211_GET_NETWORKS_RESULT structure that indicates all networks in range.
-    // NetworkList is allocated memory which must be freed.
-    //
+  //
+  // Retrieve an EFI_80211_GET_NETWORKS_RESULT structure that indicates all networks in range.
+  // NetworkList is allocated memory which must be freed.
+  //
 
-    Status = GetWiFiNetworkList (WiFi2Protocol, &NetworkList);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get active Wi-Fi SSID list (%r).\r\n", Status));
-      goto Exit;
-    }
+  Status = GetWiFiNetworkList (WiFi2Protocol, &NetworkList);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get active Wi-Fi SSID list (%r).\r\n", Status));
+    goto Exit;
+  }
 
  #endif
   // TODO - limit number of SSIDs presented (sort them?)

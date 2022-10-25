@@ -1,4 +1,4 @@
-/** @file CbmrSampleUIAppGraphics.c
+/** @file CbmrAppGraphics.c
 
   cBMR Sample Application graphics helper functions.
 
@@ -7,7 +7,7 @@
 
   The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
 **/
-#include "CbmrSampleUIApp.h"
+#include "CbmrApp.h"
 
 typedef struct _EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER {
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION    *Mode;
@@ -17,13 +17,13 @@ typedef struct _EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER {
 static INTN
 EFIAPI
 GfxModeCompareFunc (
-  IN CONST VOID *Mode1,
-  IN CONST VOID *Mode2
+  IN CONST VOID  *Mode1,
+  IN CONST VOID  *Mode2
   )
 {
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *GfxMode1 = ((EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER *)Mode1)->Mode;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *GfxMode2 = ((EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER *)Mode2)->Mode;
-  INTN                                  Ret = (INTN)(GfxMode1->HorizontalResolution) - (INTN)(GfxMode2->HorizontalResolution);
+  INTN                                  Ret       = (INTN)(GfxMode1->HorizontalResolution) - (INTN)(GfxMode2->HorizontalResolution);
 
   // if (Ret == 0) {
   //     Ret = (*(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION**)Mode1)->VerticalResolution -
@@ -36,11 +36,11 @@ GfxModeCompareFunc (
 EFI_STATUS
 EFIAPI
 GfxGetGraphicsResolution (
-  OUT UINT32 *Width,
-  OUT UINT32 *Height
+  OUT UINT32  *Width,
+  OUT UINT32  *Height
   )
 {
-  EFI_STATUS                    Status = EFI_SUCCESS;
+  EFI_STATUS                    Status            = EFI_SUCCESS;
   EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsProtocol = NULL;
 
   //
@@ -72,10 +72,10 @@ Exit:
 EFI_STATUS
 EFIAPI
 GfxSetGraphicsResolution (
-  OUT UINT32 *PreviousMode
+  OUT UINT32  *PreviousMode
   )
 {
-  EFI_STATUS                                    Status = EFI_SUCCESS;
+  EFI_STATUS                                    Status            = EFI_SUCCESS;
   EFI_GRAPHICS_OUTPUT_PROTOCOL                  *GraphicsProtocol = NULL;
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE             *GraphicsMode     = NULL;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER  *GraphicsModes    = NULL;
