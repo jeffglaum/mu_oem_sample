@@ -43,8 +43,6 @@ CbmrAppProgressCallback (
   IN EFI_MS_CBMR_PROGRESS   *Progress
   )
 {
-  // CHAR16  GenericString[64];
-
   if (This == NULL) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: [%a] 'This' pointer = %p.\n", __FUNCTION__, This));
     // Can continue, This is currently not used
@@ -72,8 +70,7 @@ CbmrAppProgressCallback (
     case MsCbmrPhaseCollateralsDownloading:
       DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Progress callback: MsCbmrPhaseCollateralsDownloading.\n"));
       CbmrUIUpdateLabelValue (cBMRState, L"Downloading StubOS...");
-      // UnicodeSPrint (GenericString, sizeof (GenericString), L"%d", Progress->ProgressData.DownloadProgress.CollateralIndex);
-      // CbmrUIUpdateLabelValue (DownloadFileCount, GenericString);
+
  #if 0
       UINTN  PerCollateralRunningSize = Progress->ProgressData.DownloadProgress
                                           .CollateralDownloadedSize;
@@ -118,103 +115,43 @@ CbmrAppProgressCallback (
   return EFI_SUCCESS;
 }
 
-/**
-  cBMR UEFI application entry point.
-
-  @param[in]  ImageHandle     Application image handle.
-  @param[in]  SystemTable     Pointer to the system table.
-
-  @retval     EFI_STATUS
-**/
-EFI_STATUS
+static EFI_STATUS
 EFIAPI
-CbmrAppEntry (
-  IN EFI_HANDLE        ImageHandle,
-  IN EFI_SYSTEM_TABLE  *SystemTable
+ConnectToNetwork (
+  OUT BOOLEAN  *UseWiFiConnection,
+  OUT CHAR8    *SSIDNameA,
+  IN UINT8     SSIDNameMaxLength,
+  OUT CHAR8    *SSIDPasswordA,
+  IN UINT8     SSIDPasswordMaxLength
   )
 {
-  EFI_STATUS                      Status             = EFI_SUCCESS;
-  UINT32                          PreviousMode       = 0;
-  Canvas                          *WindowCanvas      = NULL;
-  BOOLEAN                         bUseWiFiConnection = FALSE;
-  CHAR8                           SSIDNameA[SSID_MAX_NAME_LENGTH];
-  CHAR8                           SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
+  EFI_STATUS                      Status = EFI_SUCCESS;
   CHAR16                          SSIDName[SSID_MAX_NAME_LENGTH];
   CHAR16                          SSIDPassword[SSID_MAX_PASSWORD_LENGTH];
-  CHAR16                          GenericString[64];
   EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo = NULL;
 
-  ZeroMem (SSIDNameA, sizeof (SSIDNameA));
-  ZeroMem (SSIDPasswordA, sizeof (SSIDPasswordA));
+  // Zero stack variables.
+  //
   ZeroMem (SSIDName, sizeof (SSIDName));
   ZeroMem (SSIDPassword, sizeof (SSIDPassword));
 
-  //
-  // Set the working graphics resolution.
-  //
-
-  Status = GfxSetGraphicsResolution (&PreviousMode);
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to set desired graphics resolution (%r).\n", Status));
-    goto Exit;
-  }
-
-  Status = gBS->InstallProtocolInterface (&gDialogHandle, &gDialogGuid, EFI_NATIVE_INTERFACE, NULL);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to create dialog window handle (%r).\r\n", Status));
-    goto Exit;
-  }
-
-  //
-  // Initialize the Simple UI ToolKit for presentation.
-  //
-
-  Status = InitializeUIToolKit (ImageHandle);
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to initialize the UI toolkit (%r).\r\n", Status));
-    goto Exit;
-  }
-
-  //
-  // Initialize application user interface.
-  //
-
-  Status = CbmrUICreateWindow (&WindowCanvas);
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to initialize application interface (%r).\r\n", Status));
-    goto Exit;
-  }
-
-  //
-  // Ready.  Wait for user input to either proceed or cancel.
-  //
-
-  CbmrUIUpdateLabelValue (cBMRState, L"Ready");
-
-  SWM_MB_RESULT  Result = CbmrUIWindowMessageHandler (
-                            WindowCanvas
-                            );
-
-  // User decided to cancel.
-  if (Result == SWM_MB_IDCANCEL) {
-    Status = EFI_SUCCESS;
-    goto Exit;
-  }
-
-  //
-  // Configure the network connection.
+  // First try to connect to a wired LAN connection.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
-  Status = ConnectToNetwork (&InterfaceInfo);
-
+  // TODO
+  //Status = ConnectToWiredLAN (&InterfaceInfo);
+  Status = EFI_INVALID_PARAMETER;
+  
+  // If that fails, scan for Wi-Fi access points, present a list for the user to select
+  // and try to connect to the selected Wi-Fi access point.
+  //
   if (EFI_ERROR (Status)) {
     // Present WiFi SSID list and try to connect.
+    //
     DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Unable to connect to a wired LAN network, looking for a Wi-Fi access point.\r\n"));
 
     // Prompt the user for an SSID and password.
+    //
     Status = CbmrUIGetSSIDAndPassword (&SSIDName[0], SSID_MAX_NAME_LENGTH, &SSIDPassword[0], SSID_MAX_PASSWORD_LENGTH);
 
     if (EFI_ERROR (Status)) {
@@ -225,8 +162,9 @@ CbmrAppEntry (
     DEBUG ((DEBUG_INFO, "INFO [cBMR App]: SSIDname=%s, SSIDpassword=%s (Status = %r).\r\n", SSIDName, SSIDPassword, Status));
 
     // Try to connect to specified Wi-Fi access point with password provided.
-    UnicodeStrToAsciiStrS (SSIDName, SSIDNameA, SSID_MAX_NAME_LENGTH);
-    UnicodeStrToAsciiStrS (SSIDPassword, SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+    //
+    UnicodeStrToAsciiStrS (SSIDName, SSIDNameA, SSIDNameMaxLength);
+    UnicodeStrToAsciiStrS (SSIDPassword, SSIDPasswordA, SSIDPasswordMaxLength);
 
     Status = ConnectToWiFiAccessPoint (SSIDNameA, SSIDPasswordA);
 
@@ -235,18 +173,18 @@ CbmrAppEntry (
       goto Exit;
     }
 
-    bUseWiFiConnection = TRUE;
+    *UseWiFiConnection = TRUE;
   }
 
   CbmrUIUpdateLabelValue (NetworkState, L"Connected");
-  CbmrUIUpdateLabelValue (NetworkSSID, (bUseWiFiConnection ? SSIDName : L"N/A (Ethernet)"));
+  CbmrUIUpdateLabelValue (NetworkSSID, (*UseWiFiConnection ? SSIDName : L"N/A (Ethernet)"));
 
   // TODO
   // CbmrUIUpdateLabelValue( NetworkPolicy, Policy == Ip4Config2PolicyStatic ? t("Static") : t("DHCP"));
 
   // TODO - how to get IPv4 information from Wi-Fi connection?
 
-  if (bUseWiFiConnection == FALSE) {
+  if (*UseWiFiConnection == FALSE) {
     CHAR16  IpAddressString[25];
 
     UnicodeSPrint (
@@ -284,7 +222,100 @@ CbmrAppEntry (
     InterfaceInfo = NULL;
   }
 
+Exit:
+
+  return Status;
+}
+
+/**
+  cBMR UEFI application entry point.
+
+  @param[in]  ImageHandle     Application image handle.
+  @param[in]  SystemTable     Pointer to the system table.
+
+  @retval     EFI_STATUS
+**/
+EFI_STATUS
+EFIAPI
+CbmrAppEntry (
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
+  )
+{
+  EFI_STATUS  Status        = EFI_SUCCESS;
+  UINT32      PreviousMode  = 0;
+  Canvas      *WindowCanvas = NULL;
+
+  BOOLEAN  bUseWiFiConnection = FALSE;
+  CHAR8    SSIDNameA[SSID_MAX_NAME_LENGTH];
+  CHAR8    SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
+
+  CHAR16  GenericString[64];
+
+  // Zero stack variables.
   //
+  ZeroMem (SSIDNameA, sizeof (SSIDNameA));
+  ZeroMem (SSIDPasswordA, sizeof (SSIDPasswordA));
+
+  // Set the working graphics resolution.
+  //
+  Status = GfxSetGraphicsResolution (&PreviousMode);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to set desired graphics resolution (%r).\n", Status));
+    goto Exit;
+  }
+
+  // Obtain a new handle for app pop-up dialogs.
+  //
+  Status = gBS->InstallProtocolInterface (&gDialogHandle, &gDialogGuid, EFI_NATIVE_INTERFACE, NULL);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to create dialog window handle (%r).\r\n", Status));
+    goto Exit;
+  }
+
+  // Initialize the Simple UI ToolKit for presentation.
+  //
+  Status = InitializeUIToolKit (ImageHandle);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to initialize the UI toolkit (%r).\r\n", Status));
+    goto Exit;
+  }
+
+  // Create application main window.
+  //
+  Status = CbmrUICreateWindow (&WindowCanvas);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to initialize application window (%r).\r\n", Status));
+    goto Exit;
+  }
+
+  // Ready.  Wait for user input to either proceed with cBMR or to cancel.
+  //
+  CbmrUIUpdateLabelValue (cBMRState, L"Ready");
+
+  SWM_MB_RESULT  Result = CbmrUIWindowMessageHandler (
+                            WindowCanvas
+                            );
+
+  // If the user decided to cancel, exit.
+  //
+  if (Result == SWM_MB_IDCANCEL) {
+    Status = EFI_SUCCESS;
+    goto Exit;
+  }
+
+  // Connect to the network (tries wired LAN first then falls back to Wi-Fi if that fails).
+  //
+  Status = ConnectToNetwork (&bUseWiFiConnection, SSIDNameA, SSID_MAX_NAME_LENGTH, SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to the network (%r).\r\n", Status));
+    goto Exit;
+  }
+
   // Locate cBMR protocol.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Locating cBMR driver...");
@@ -296,13 +327,13 @@ CbmrAppEntry (
                   NULL,
                   (VOID **)&CbmrProtocolPtr
                   );
+
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate cBMR protocol (%r).\r\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate cBMR (driver) protocol (%r).\r\n", Status));
     goto Exit;
   }
 
-  //
-  // Configure cBMR protocol.
+  // Configure cBMR (driver) protocol.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Configuring cBMR driver...");
   EFI_MS_CBMR_CONFIG_DATA  CbmrConfigData;
@@ -331,14 +362,11 @@ CbmrAppEntry (
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to configure cBMR protocol (%r).\r\n", Status));
-    // CbmrShowDriverErrorInfo (CbmrProtocolPtr);
     goto Exit;
   }
 
-  //
   // Fetch cBMR download collateral information.
   //
-
   CbmrUIUpdateLabelValue (cBMRState, L"Fetching manifest...");
 
   UINTN  DataSize = 0;

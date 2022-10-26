@@ -390,8 +390,11 @@ CbmrUIGetSSIDAndPassword (
   IN UINT8    SSIDPasswordMaxLength
   )
 {
-  EFI_STATUS  Status           = EFI_SUCCESS;
-  Canvas      *WiFDialogCanvas = NULL;
+  EFI_STATUS                               Status                 = EFI_SUCCESS;
+  BOOLEAN                                  DialogWindowRegistered = FALSE;
+  Canvas                                   *WiFiDialogCanvas      = NULL;
+  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol;
+  EFI_80211_GET_NETWORKS_RESULT            *NetworkList;
 
   // Locate the Simple Window Manager protocol.
   //
@@ -422,47 +425,49 @@ CbmrUIGetSSIDAndPassword (
     Status = EFI_NOT_READY;
   }
 
- #if 0
-  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool (4 * sizeof (UIT_LB_CELLDATA));
-  if (WifiOptionCells == NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Exit;
-  }
-
- #endif
-
-  UIT_LB_CELLDATA  WifiOptionCells[5] = {
-    // NEED EMPTY CELL.
-    { L"One",   FALSE, FALSE },
-    { L"Two",   FALSE, FALSE },
-    { L"Three", FALSE, FALSE },
-    { L"Four",  FALSE, FALSE }
-  };
- #if 0
+  // Locate the WiFi2 protocol.
+  //
   Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID **)&WiFi2Protocol);
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate WiFi2 protocol (%r).\r\n", Status));
     goto Exit;
   }
 
-  //
   // Retrieve an EFI_80211_GET_NETWORKS_RESULT structure that indicates all networks in range.
   // NetworkList is allocated memory which must be freed.
   //
-
   Status = GetWiFiNetworkList (WiFi2Protocol, &NetworkList);
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get active Wi-Fi SSID list (%r).\r\n", Status));
     goto Exit;
   }
 
- #endif
   // TODO - limit number of SSIDs presented (sort them?)
+
+  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool (NetworkList->NumOfNetworkDesc * sizeof (UIT_LB_CELLDATA));
+
+  if (WifiOptionCells == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
+
+  CHAR8  SSIDNameA[EFI_MAX_SSID_LEN + 1];
+
+  for (UINTN i = 0; i < NetworkList->NumOfNetworkDesc; i++) {
+    WifiOptionCells[i].CheckBoxSelected = FALSE;
+    WifiOptionCells[i].TrashcanEnabled  = FALSE;
+    WifiOptionCells[i].CellText         = AllocateZeroPool (sizeof (CHAR16) * (EFI_MAX_SSID_LEN + 1));
+
+    SSIdNameToStr (&NetworkList->NetworkDesc[i].Network.SSId, SSIDNameA);
+    AsciiStrToUnicodeStrS (SSIDNameA, WifiOptionCells[i].CellText, (EFI_MAX_SSID_LEN + 1));
+  }
 
   // Change UI toolkit handle to dialog handle.
   InitializeUIToolKit (gDialogHandle);
 
-  // TODO.
+  // TODO - based on screen size percentages.
   DialogRect.Left   = 200;
   DialogRect.Top    = 100;
   DialogRect.Right  = 600;
@@ -486,6 +491,7 @@ CbmrUIGetSSIDAndPassword (
     goto Exit;
   }
 
+  DialogWindowRegistered = TRUE;
   mSWMProtocol->ActivateWindow (
                   mSWMProtocol,
                   gDialogHandle,
@@ -496,12 +502,12 @@ CbmrUIGetSSIDAndPassword (
   Status = CbmrUICreateWiFiDialog (
              &DialogRect,
              WifiOptionCells,
-             &WiFDialogCanvas
+             &WiFiDialogCanvas
              );
 
   SWM_MB_RESULT  Result = ProcessDialogInput (
                             mSWMProtocol,
-                            WiFDialogCanvas,
+                            WiFiDialogCanvas,
                             NULL,
                             0
                             );
@@ -518,23 +524,26 @@ CbmrUIGetSSIDAndPassword (
 
 Exit:
 
-  mSWMProtocol->ActivateWindow (
-                  mSWMProtocol,
-                  gDialogHandle,
-                  FALSE
-                  );
+  if (DialogWindowRegistered) {
+    mSWMProtocol->ActivateWindow (
+                    mSWMProtocol,
+                    gDialogHandle,
+                    FALSE
+                    );
 
-  // Unregister with the window manager as a client.
-  //
-  mSWMProtocol->UnregisterClient (
-                  mSWMProtocol,
-                  gDialogHandle
-                  );
+    // Unregister with the window manager as a client.
+    //
+    mSWMProtocol->UnregisterClient (
+                    mSWMProtocol,
+                    gDialogHandle
+                    );
+  }
 
   // Restore UI Handle to normal.
   InitializeUIToolKit (gImageHandle);
 
   // TODO delete canvas.
+  // TODO clean up WifiOptionCells.
 
   return (Status);
 }

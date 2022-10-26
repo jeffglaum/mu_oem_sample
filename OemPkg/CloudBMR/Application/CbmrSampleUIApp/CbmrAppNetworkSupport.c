@@ -480,7 +480,7 @@ WaitForIpAddress (
 **/
 EFI_STATUS
 EFIAPI
-ConnectToNetwork (
+ConnectToWiredLAN (
   EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
   )
 {

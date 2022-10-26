@@ -37,14 +37,14 @@
 
 typedef enum {
   cBMRState          = 0,
-  DownloadFileCount  = 1,
-  DownloadTotalSize  = 4,
-  NetworkState       = 5,
-  NetworkSSID        = 6,
-  NetworkPolicy      = 7,
-  NetworkIPAddr      = 8,
-  NetworkGatewayAddr = 9,
-  NetworkDNSAddr     = 10
+  DownloadFileCount,
+  DownloadTotalSize,
+  NetworkState,
+  NetworkSSID,
+  NetworkPolicy,
+  NetworkIPAddr,
+  NetworkGatewayAddr,
+  NetworkDNSAddr
 } CBMR_UI_DATA_LABEL_TYPE;
 
 typedef enum {
@@ -97,7 +97,7 @@ CbmrUIWindowMessageHandler (
 
 EFI_STATUS
 EFIAPI
-ConnectToNetwork (
+ConnectToWiredLAN (
   EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
   );
 
@@ -124,4 +124,11 @@ GetWiFiNetworkList (
   OUT EFI_80211_GET_NETWORKS_RESULT            **NetworkInfoPtr
   );
 
+VOID
+EFIAPI
+SSIdNameToStr (
+  IN  EFI_80211_SSID  *SSIdStruct,
+  OUT CHAR8           *SSIdNameStr
+  );
+  
 #endif // _CBMR_SAMPLE_UI_APP_H_
