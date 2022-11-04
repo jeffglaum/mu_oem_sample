@@ -27,6 +27,9 @@ UINTN                    gAllCollateralsRunningSize = 0; // This is the sum of a
 EFI_HANDLE       gDialogHandle = NULL;
 static EFI_GUID  gDialogGuid   = CBMR_APP_DIALOG_PROTOCOL_GUID;
 
+extern BOOLEAN  PcdCbmrEnableWifiSupport;
+extern UINT32 PcdCbmrGraphicsMode;
+
 /**
   Callback that receives updates from the cBMR process sample library handling network negotiations and
   StubOS download as part of the cBMR process.
@@ -138,14 +141,19 @@ ConnectToNetwork (
   // First try to connect to a wired LAN connection.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
-  // TODO
-  //Status = ConnectToWiredLAN (&InterfaceInfo);
-  Status = EFI_INVALID_PARAMETER;
-  
+  Status = ConnectToWiredLAN (&InterfaceInfo);
+
   // If that fails, scan for Wi-Fi access points, present a list for the user to select
   // and try to connect to the selected Wi-Fi access point.
   //
   if (EFI_ERROR (Status)) {
+    // If the system designer didn't enable support for Wi-Fi, exit here.
+    //
+    if (FeaturePcdGet (PcdCbmrEnableWifiSupport) == FALSE) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Unable to connect to a wired LAN network and Wi-Fi isn\'t supported on this platform.\r\n"));
+      goto Exit;
+    }
+
     // Present WiFi SSID list and try to connect.
     //
     DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Unable to connect to a wired LAN network, looking for a Wi-Fi access point.\r\n"));
@@ -169,7 +177,7 @@ ConnectToNetwork (
     Status = ConnectToWiFiAccessPoint (SSIDNameA, SSIDPasswordA);
 
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "INFO [cBMR App]: Failed to connect to specified Wi-Fi access point. (%r).\r\n", Status));
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to specified Wi-Fi access point. (%r).\r\n", Status));
       goto Exit;
     }
 
@@ -259,7 +267,7 @@ CbmrAppEntry (
 
   // Set the working graphics resolution.
   //
-  Status = GfxSetGraphicsResolution (&PreviousMode);
+  Status = GfxSetGraphicsResolution (FixedPcdGet32 (PcdCbmrGraphicsMode), &PreviousMode);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to set desired graphics resolution (%r).\n", Status));

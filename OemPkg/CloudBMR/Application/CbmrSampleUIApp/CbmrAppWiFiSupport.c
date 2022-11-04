@@ -139,7 +139,6 @@ GetWiFiNetworkList (
                       &gWiFiEvent
                       );
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -312,13 +311,11 @@ ConnectToWiFiAccessPoint (
 
   Status = gBS->LocateProtocol (&gEfiWiFi2ProtocolGuid, NULL, (VOID **)&WiFi2Protocol);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
   Status = gBS->LocateProtocol (&gEfiSupplicantProtocolGuid, NULL, (VOID **)&SupplicantProtocol);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 

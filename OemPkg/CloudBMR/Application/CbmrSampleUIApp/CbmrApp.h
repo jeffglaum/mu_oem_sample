@@ -35,8 +35,19 @@
 #include <UIToolKit/SimpleUIToolKit.h>
 #include <Protocol/SimpleTextInEx.h>
 
+#define NORMAL_VERTICAL_PADDING_PIXELS   10     // 10 pixels normal padding.
+#define SECTION_VERTICAL_PADDING_PIXELS  20     // 20 pixels padding between sections.
+
+// Dialog font sizes.  These represent vertical heights (in pixels) which in turn map to one of the custom fonts
+// registered by the simple window manager.
+//
+#define SWM_MB_CUSTOM_FONT_BUTTONTEXT_HEIGHT  MsUiGetSmallFontHeight ()
+#define SWM_MB_CUSTOM_FONT_TITLEBAR_HEIGHT    MsUiGetSmallFontHeight ()
+#define SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT     MsUiGetLargeFontHeight ()
+#define SWM_MB_CUSTOM_FONT_BODY_HEIGHT        MsUiGetStandardFontHeight ()
+
 typedef enum {
-  cBMRState          = 0,
+  cBMRState = 0,
   DownloadFileCount,
   DownloadTotalSize,
   NetworkState,
@@ -60,6 +71,7 @@ typedef enum {
 EFI_STATUS
 EFIAPI
 GfxSetGraphicsResolution (
+  IN UINT32 DesiredMode,
   OUT UINT32  *PreviousMode
   );
 
@@ -130,5 +142,5 @@ SSIdNameToStr (
   IN  EFI_80211_SSID  *SSIdStruct,
   OUT CHAR8           *SSIdNameStr
   );
-  
+
 #endif // _CBMR_SAMPLE_UI_APP_H_

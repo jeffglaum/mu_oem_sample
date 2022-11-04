@@ -78,7 +78,6 @@ WaitForDataNotify (
                   &Event
                   );
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -293,7 +292,6 @@ LocateIp4ConfigProtocol (
   // Find all network adapters that are bound to the IP4 Config Protocol
   Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiIp4Config2ProtocolGuid, NULL, &HandleCount, &Handles);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -309,7 +307,6 @@ LocateIp4ConfigProtocol (
   Status = gBS->HandleProtocol (Handles[0], &gEfiIp4Config2ProtocolGuid, (VOID **)Ip4Config2ProtocolPtr);
   FreePool (Handles);
   if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -434,7 +431,6 @@ WaitForIpAddress (
     // Allocate buffer requested from first call
     Info = (EFI_IP4_CONFIG2_INTERFACE_INFO *)AllocateZeroPool (Size);
     if (Info == NULL) {
-      ASSERT (Info);
       return EFI_OUT_OF_RESOURCES;
     }
 

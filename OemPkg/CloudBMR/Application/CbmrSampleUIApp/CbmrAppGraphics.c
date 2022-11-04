@@ -25,11 +25,6 @@ GfxModeCompareFunc (
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION  *GfxMode2 = ((EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER *)Mode2)->Mode;
   INTN                                  Ret       = (INTN)(GfxMode1->HorizontalResolution) - (INTN)(GfxMode2->HorizontalResolution);
 
-  // if (Ret == 0) {
-  //     Ret = (*(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION**)Mode1)->VerticalResolution -
-  //           (*(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION**)Mode2)->VerticalResolution;
-  // }
-
   return Ret;
 }
 
@@ -72,6 +67,7 @@ Exit:
 EFI_STATUS
 EFIAPI
 GfxSetGraphicsResolution (
+  IN UINT32   DesiredMode,
   OUT UINT32  *PreviousMode
   )
 {
@@ -80,10 +76,8 @@ GfxSetGraphicsResolution (
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE             *GraphicsMode     = NULL;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER  *GraphicsModes    = NULL;
 
-  //
   // Get hold of graphics protocol
   //
-
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&GraphicsProtocol);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "LocateProtocol() failed : (%r)\n", Status));
@@ -116,32 +110,31 @@ GfxSetGraphicsResolution (
     }
 
     GraphicsModes[i].Index = i;
+    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: GOP Mode %d (Horizontal=%d, Vertical=%d).\r\n", GraphicsModes[i].Index, GraphicsModes[i].Mode->HorizontalResolution, GraphicsModes[i].Mode->VerticalResolution));
   }
 
+ #if 0
+  // If no graphics mode has been set at build time, choose a mode mid-way in the available list.
   //
-  // Sort the resolutions based on HorizontalResolution
-  //
+  if (SelectedModeIndex == -1) {
+    // Sort the resolutions based on HorizontalResolution
+    //
+    PerformQuickSort (
+      GraphicsModes,
+      GraphicsMode->MaxMode,
+      sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER),
+      GfxModeCompareFunc
+      );
 
-  PerformQuickSort (
-    GraphicsModes,
-    GraphicsMode->MaxMode,
-    sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER),
-    GfxModeCompareFunc
-    );
+    // Pick the middle resolution from the available list of resolutions
+    //
+    SelectedModeIndex = GraphicsModes[GraphicsMode->MaxMode / 2].Index;
+  }
 
-  //
-  // Pick the middle resolution from the available list of resolutions
-  //
+ #endif
 
-  UINT32  MidIndex = GraphicsMode->MaxMode / 2;
-
-  DEBUG ((
-    DEBUG_INFO,
-    "Picking graphics mode(%d x %d)\n",
-    GraphicsModes[MidIndex].Mode->HorizontalResolution,
-    GraphicsModes[MidIndex].Mode->VerticalResolution
-    ));
-  Status = GraphicsProtocol->SetMode (GraphicsProtocol, GraphicsModes[MidIndex].Index);
+  DEBUG ((DEBUG_INFO, "Picking graphics mode: %d\n", DesiredMode));
+  Status = GraphicsProtocol->SetMode (GraphicsProtocol, DesiredMode);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "SetMode() failed : (%r)\n", Status));

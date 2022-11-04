@@ -78,7 +78,9 @@
 
 [Pcd]
   gMsGraphicsPkgTokenSpaceGuid.PcdCurrentPointerState
+  gOemPkgTokenSpaceGuid.PcdCbmrGraphicsMode
   gOemPkgTokenSpaceGuid.PcdCloudBMRCompanyLogoFile
+  gOemPkgTokenSpaceGuid.PcdCbmrEnableWifiSupport
   gOemPkgTokenSpaceGuid.PcdCbmrGetWifiNetworksTimeout
   gOemPkgTokenSpaceGuid.PcdCbmrWifiNetworkConnectTimeout
   gOemPkgTokenSpaceGuid.PcdCbmrSetDhcpPolicyTimeout

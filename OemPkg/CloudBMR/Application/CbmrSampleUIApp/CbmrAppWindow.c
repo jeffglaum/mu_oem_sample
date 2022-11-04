@@ -12,8 +12,9 @@
 #include <Pi/PiFirmwareFile.h>
 
 #include <Library/BmpSupportLib.h>
-
 #include <Library/DxeServicesLib.h>
+#include <Library/MsUiThemeLib.h>
+#include <Library/MsColorTableLib.h>
 
 #include <MsDisplayEngine.h>
 
@@ -21,16 +22,7 @@
 #include <Protocol/SimpleWindowManager.h>
 
 #include <UIToolKit/SimpleUIToolKit.h>
-#include <Library/MsUiThemeLib.h>
-#include <Library/MsColorTableLib.h>
 
-// Dialog font sizes.  These represent vertical heights (in pixels) which in turn map to one of the custom fonts
-// registered by the simple window manager.
-//
-#define SWM_MB_CUSTOM_FONT_BUTTONTEXT_HEIGHT  MsUiGetSmallFontHeight ()
-#define SWM_MB_CUSTOM_FONT_TITLEBAR_HEIGHT    MsUiGetSmallFontHeight ()
-#define SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT     MsUiGetLargeFontHeight ()
-#define SWM_MB_CUSTOM_FONT_BODY_HEIGHT        MsUiGetStandardFontHeight ()
 
 struct _CBMR_UI_DYNAMIC_LABELS {
   Label    *cBMRState;
@@ -56,9 +48,9 @@ EFI_GRAPHICS_OUTPUT_PROTOCOL       *mGop;
 MS_ONSCREEN_KEYBOARD_PROTOCOL      *mOSKProtocol;
 MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *mSWMProtocol;
 
-SWM_RECT                       WindowRect;
-EFI_ABSOLUTE_POINTER_PROTOCOL  *mCbmrPointerProtocol;
-EFI_EVENT                      mCbmrPaintEvent;
+SWM_RECT                              WindowRect;
+static EFI_ABSOLUTE_POINTER_PROTOCOL  *mCbmrPointerProtocol;
+static EFI_EVENT                      mCbmrPaintEvent;
 
 //
 // Boot video resolution and text mode.
@@ -255,8 +247,9 @@ CbmrUICreateWindow (
   Canvas  **WindowCanvas
   )
 {
-  EFI_STATUS  Status  = EFI_SUCCESS;
-  UINT32      OSKMode = 0;
+  EFI_STATUS  Status         = EFI_SUCCESS;
+  UINT32      OSKMode        = 0;
+  UINT32      VerticalOffset = 0;
 
   //
   // Get current video resolution and text mode.
@@ -300,6 +293,8 @@ CbmrUICreateWindow (
     goto Exit;
   }
 
+  // Locate simple text input protocol.
+  //
   if (gST->ConsoleInHandle != NULL) {
     Status = gBS->OpenProtocol (
                     gST->ConsoleInHandle,
@@ -367,9 +362,9 @@ CbmrUICreateWindow (
   // Create a canvas for the main cBMR window.
   //
   Canvas  *LocalWindowCanvas = new_Canvas (
-                            WindowRect,
-                            &gMsColorTable.FormCanvasBackgroundColor
-                            );
+                                 WindowRect,
+                                 &gMsColorTable.FormCanvasBackgroundColor
+                                 );
 
   if (NULL == LocalWindowCanvas) {
     Status = EFI_OUT_OF_RESOURCES;
@@ -377,135 +372,138 @@ CbmrUICreateWindow (
     goto Exit;
   }
 
-  // Grid
-  SWM_RECT  TitleGridRect = { WindowRect.Left, WindowRect.Top, WindowRect.Right, (WindowRect.Top + 128) };
+  // Start the Vertical Offset at 5% screen height from the top.
+  //
+  VerticalOffset = ((mBootVerticalResolution * 5) / 100);
 
-  Grid  *TitleGrid = new_Grid (LocalWindowCanvas, TitleGridRect, 1, 4, FALSE);
-
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  FALSE,               // Not highlightable.
-                  TRUE,                // Invisible.
-                  (VOID *)TitleGrid
-                  );
-
+  // Create a company bitmap element from the file embedded in the UEFI resource section.
+  //
   // NOTE: insert into your platform FDF file a reference to the company logo bitmap.  Something like this:
   //  # cBMR application company logo bitmap image.
   // FILE FREEFORM = PCD(gOemPkgTokenSpaceGuid.PcdCloudBMRCompanyLogoFile) {
   //   SECTION RAW = OemPkg/CloudBMR/Application/CbmrSampleUIApp/Resources/WindowsLogo.bmp
   // }
+  //
+  Bitmap  *CompanyLogoBitmap = CbmrUIFetchBitmap (0, 0, PcdGetPtr (PcdCloudBMRCompanyLogoFile));
 
-  TitleGrid->AddControl (TitleGrid, FALSE, FALSE, 0, 0, (VOID *)CbmrUIFetchBitmap (0, 0, PcdGetPtr (PcdCloudBMRCompanyLogoFile)));
+  // Get the size of the bitmap.
+  //
+  UINT32  LogoBitmapHeight = 128;  // Set a minimum standard size for the logo bitmap (pixels).
 
-  Label          *CaptionLabel = NULL;
+  if (CompanyLogoBitmap != NULL) {
+    SWM_RECT  LogoBitmapFrame;
+    CompanyLogoBitmap->Base.GetControlBounds (CompanyLogoBitmap, &LogoBitmapFrame);
+    LogoBitmapHeight = (LogoBitmapFrame.Bottom - LogoBitmapFrame.Top + 1);
+  }
+
+  // Create a header grid for the company logo and header text.  Grid height needs to be enough to accomodate the
+  // company logo bitmap (the tallest element).
+  //
+  SWM_RECT  HeaderGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + LogoBitmapHeight) };
+  Grid      *HeaderGrid    = new_Grid (LocalWindowCanvas, HeaderGridRect, 1, 4, FALSE);
+
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)HeaderGrid);
+  VerticalOffset += (LogoBitmapHeight + SECTION_VERTICAL_PADDING_PIXELS);
+
+  // Add the company logo bitmap to the grid.
+  //
+  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, 0, (VOID *)CompanyLogoBitmap);
+
+  // Define the header font.
+  //
   EFI_FONT_INFO  HeadingFontInfo;
 
   HeadingFontInfo.FontSize    = SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT;
   HeadingFontInfo.FontStyle   = EFI_HII_FONT_STYLE_NORMAL;
   HeadingFontInfo.FontName[0] = L'\0';
 
-  CaptionLabel = new_Label (
-                   0,
-                   0,
-                   500,
-                   100,
-                   &HeadingFontInfo,
-                   &gMsColorTable.LabelTextLargeColor,
-                   &gMsColorTable.FormCanvasBackgroundColor,
-                   L"Cloud Bare Metal Recovery"
-                   );
+  // Add title text to the grid.
+  //
+  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 800, SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT, &HeadingFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Cloud Bare Metal Recovery"));
 
-  if (NULL == CaptionLabel) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Exit;
-  }
-
-  TitleGrid->AddControl (TitleGrid, FALSE, FALSE, 0, 1, (VOID *)CaptionLabel);
-
+  // Define the body font.
+  //
   EFI_FONT_INFO  BodyFontInfo;
 
   BodyFontInfo.FontSize    = SWM_MB_CUSTOM_FONT_BODY_HEIGHT;
   BodyFontInfo.FontStyle   = EFI_HII_FONT_STYLE_NORMAL;
   BodyFontInfo.FontName[0] = L'\0';
 
-  // Stage Grid
-  SWM_RECT  StageGridRect = { WindowRect.Left, (WindowRect.Top + 128), WindowRect.Right, (WindowRect.Top + 192) };
+  // Create cBMR state grid (3 rows of text).
+  //
+  SWM_RECT  StateGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + ((SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS) * 3)) };
+  Grid      *StateGrid    = new_Grid (LocalWindowCanvas, StateGridRect, 3, 4, FALSE);
 
-  Grid  *StageGrid = new_Grid (LocalWindowCanvas, StageGridRect, 3, 4, FALSE);
+  VerticalOffset += (((SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS) * 3) + SECTION_VERTICAL_PADDING_PIXELS);
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)StateGrid);
 
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  FALSE,               // Not highlightable.
-                  TRUE,                // Invisible.
-                  (VOID *)StageGrid
-                  );
+  // Add state, download file count, and total download size to state grid.
+  //
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Stage:"));
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 1, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Number of Files:"));
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 2, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Total Size:"));
 
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Stage:"));
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 1, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Number of Files:"));
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 2, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Total Size:"));
+  cBMRUIDataLabels.cBMRState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.cBMRState);
+  cBMRUIDataLabels.DownloadFileCount = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.DownloadFileCount);
+  cBMRUIDataLabels.DownloadTotalSize = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.DownloadTotalSize);
 
-  cBMRUIDataLabels.cBMRState = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.cBMRState);
-  cBMRUIDataLabels.DownloadFileCount = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.DownloadFileCount);
-  cBMRUIDataLabels.DownloadTotalSize = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  StageGrid->AddControl (StageGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.DownloadTotalSize);
+  // Create network status grid (6 rows of text).
+  //
+  SWM_RECT  NetworkStatusGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + ((SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS) * 6)) };
+  Grid      *NetworkStatusGrid    = new_Grid (LocalWindowCanvas, NetworkStatusGridRect, 6, 4, FALSE);
 
-  // Grid
-  SWM_RECT  NetworkStatusGridRect = { WindowRect.Left, (WindowRect.Top + 220), WindowRect.Right, (WindowRect.Top + 348) };
+  VerticalOffset += (((SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS) * 6) + SECTION_VERTICAL_PADDING_PIXELS);
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)NetworkStatusGrid);
 
-  Grid  *NetworkStatusGrid = new_Grid (LocalWindowCanvas, NetworkStatusGridRect, 6, 4, FALSE);
+  // Add network state, SSID, policy, IP address, Gateway address, and DNS server address to network status grid.
+  //
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Network:"));
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"SSID:"));
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Policy:"));
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"IP Address:"));
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Gateway:"));
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"DNS Server:"));
 
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  FALSE,               // Not highlightable.
-                  TRUE,                // Invisible.
-                  (VOID *)NetworkStatusGrid
-                  );
-
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Network:"));
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"SSID:"));
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Policy:"));
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"IP Address:"));
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Gateway:"));
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"DNS Server:"));
-
-  cBMRUIDataLabels.NetworkState = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Disconnected");
+  cBMRUIDataLabels.NetworkState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Disconnected");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.NetworkState);
-  cBMRUIDataLabels.NetworkSSID = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  cBMRUIDataLabels.NetworkSSID = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.NetworkSSID);
-  cBMRUIDataLabels.NetworkPolicy = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  cBMRUIDataLabels.NetworkPolicy = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.NetworkPolicy);
-  cBMRUIDataLabels.NetworkIPAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  cBMRUIDataLabels.NetworkIPAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 2, (VOID *)cBMRUIDataLabels.NetworkIPAddr);
-  cBMRUIDataLabels.NetworkGatewayAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  cBMRUIDataLabels.NetworkGatewayAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 2, (VOID *)cBMRUIDataLabels.NetworkGatewayAddr);
-  cBMRUIDataLabels.NetworkDNSAddr = new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  cBMRUIDataLabels.NetworkDNSAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 2, (VOID *)cBMRUIDataLabels.NetworkDNSAddr);
 
-  // Grid
-  SWM_RECT  DownloadProgressGridRect = { WindowRect.Left, (WindowRect.Top + 378), WindowRect.Right, (WindowRect.Top + 506) };
+  // Create download progress bar grid (1 row of text).
+  //
+  SWM_RECT  DownloadProgressGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS)) };
+  Grid      *DownloadProgressGrid    = new_Grid (LocalWindowCanvas, DownloadProgressGridRect, 1, 4, FALSE);
 
-  Grid  *DownloadProgressGrid = new_Grid (LocalWindowCanvas, DownloadProgressGridRect, 6, 4, FALSE);
+  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS + SECTION_VERTICAL_PADDING_PIXELS);
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)DownloadProgressGrid);
 
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  FALSE,               // Not highlightable.
-                  TRUE,                // Invisible.
-                  (VOID *)DownloadProgressGrid
-                  );
+  // Add download progress title text to grid.
+  //
+  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Download %"));
 
-  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 200, 50, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Download %"));
-
-  // Progress Bar
-  DownloadProgress = new_ProgressBar (0, 0, 250, 5, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.MasterFrameBackgroundColor, 0);
+  // Add download progress bar to grid.
+  //
+  DownloadProgress = new_ProgressBar (0, 0, 300, 5, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.MasterFrameBackgroundColor, 0);
   DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 2, (VOID *)DownloadProgress);
 
+  // Create buttons to start recovery and to cancel.
+  //
   Button  *GoButton = new_Button (
-                        200,
-                        (WindowRect.Top + 440),
-                        150,
-                        40,
+                        (mBootHorizontalResolution / 2) - (300 + 40),
+                        VerticalOffset,
+                        300,
+                        SWM_MB_CUSTOM_FONT_BODY_HEIGHT + 40,
                         &BodyFontInfo,
                         &gMsColorTable.DefaultDialogBackGroundColor,
                         &gMsColorTable.DefaultDialogButtonHoverColor,
@@ -518,18 +516,13 @@ CbmrUICreateWindow (
                         (VOID *)(UINTN)SWM_MB_IDOK
                         );
 
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  TRUE,                // Highlightable.
-                  FALSE,               // Visible.
-                  (VOID *)GoButton
-                  );
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, TRUE, FALSE, (VOID *)GoButton);
 
   Button  *CancelButton = new_Button (
-                            400,
-                            (WindowRect.Top + 440),
-                            150,
-                            40,
+                            (mBootHorizontalResolution / 2) + 40,
+                            VerticalOffset,
+                            300,
+                            SWM_MB_CUSTOM_FONT_BODY_HEIGHT + 40,
                             &BodyFontInfo,
                             &gMsColorTable.DefaultDialogButtonGrayOutColor,
                             &gMsColorTable.DefaultDialogButtonHoverColor,
@@ -542,22 +535,17 @@ CbmrUICreateWindow (
                             (VOID *)(UINTN)SWM_MB_IDCANCEL
                             );
 
-  LocalWindowCanvas->AddControl (
-                  LocalWindowCanvas,
-                  TRUE,                // Highlightable.
-                  FALSE,               // Visible.
-                  (VOID *)CancelButton
-                  );
+  LocalWindowCanvas->AddControl (LocalWindowCanvas, TRUE, FALSE, (VOID *)CancelButton);
 
   LocalWindowCanvas->SetHighlight (
-                  LocalWindowCanvas,
-                  GoButton
-                  );
+                       LocalWindowCanvas,
+                       GoButton
+                       );
 
   LocalWindowCanvas->SetDefaultControl (
-                  LocalWindowCanvas,
-                  (VOID *)GoButton
-                  );
+                       LocalWindowCanvas,
+                       (VOID *)GoButton
+                       );
 
   *WindowCanvas = LocalWindowCanvas;
 
@@ -581,15 +569,14 @@ ProcessWindowInput (
   SWM_MB_RESULT    ButtonResult = 0;
   VOID             *pContext    = NULL;
   SWM_INPUT_STATE  InputState;
-  // UINTN            NumberOfEvents = 2;
-  UINTN  NumberOfEvents = 1;
+  UINTN            NumberOfEvents = 2;
 
   EFI_EVENT  WaitEvents[2];
 
   // Wait for user input.
   //
   WaitEvents[0] = gSimpleTextInEx->WaitForKeyEx;
-  // WaitEvents[1] = PointerProtocol->WaitForInput;
+  WaitEvents[1] = PointerProtocol->WaitForInput;
 
   ZeroMem (&InputState, sizeof (SWM_INPUT_STATE));
 
@@ -743,7 +730,7 @@ CbmrUIWindowMessageHandler (
   return ProcessWindowInput (
            mSWMProtocol,
            WindowCanvas,
-           NULL,
+           mCbmrPointerProtocol,
            0
            );
 }

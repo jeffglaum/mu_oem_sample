@@ -22,15 +22,6 @@
 #include <Library/MsUiThemeLib.h>
 #include <Library/MsColorTableLib.h>
 
-// Dialog font sizes.  These represent vertical heights (in pixels) which in turn map to one of the custom fonts
-// registered by the simple window manager.
-//
-#define SWM_MB_CUSTOM_FONT_BUTTONTEXT_HEIGHT  MsUiGetSmallFontHeight ()
-#define SWM_MB_CUSTOM_FONT_TITLEBAR_HEIGHT    MsUiGetSmallFontHeight ()
-#define SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT     MsUiGetLargeFontHeight ()
-#define SWM_MB_CUSTOM_FONT_BODY_HEIGHT        MsUiGetStandardFontHeight ()
-
-static EFI_GRAPHICS_OUTPUT_PROTOCOL       *mGop;
 static MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *mSWMProtocol;
 
 static SWM_RECT                       DialogRect;
@@ -40,15 +31,11 @@ static EFI_EVENT                      mCbmrPaintEvent;
 ListBox  *WifiSSIDList    = NULL;
 EditBox  *PasswordEditBox = NULL;
 
-//
-// Boot video resolution and text mode.
-//
-static UINT32  mBootHorizontalResolution = 0;
-static UINT32  mBootVerticalResolution   = 0;
-
 static EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *gSimpleTextInEx;
 
 extern EFI_HANDLE  gDialogHandle;
+extern UINT32      mBootHorizontalResolution;
+extern UINT32      mBootVerticalResolution;
 
 static
 EFI_STATUS
@@ -81,7 +68,8 @@ CbmrUICreateWiFiDialog (
   Canvas           **pDialogCanvas
   )
 {
-  EFI_STATUS  Status = EFI_SUCCESS;
+  EFI_STATUS  Status         = EFI_SUCCESS;
+  UINT32      VerticalOffset = 0;
 
   mSWMProtocol->BltWindow (
                   mSWMProtocol,
@@ -110,14 +98,20 @@ CbmrUICreateWiFiDialog (
     goto Exit;
   }
 
+  // Vertical offset for the first UI element is at 5% of the total screen height.
+  //
+  VerticalOffset = ((mBootVerticalResolution * 5) / 100);
+
   EFI_FONT_INFO  BodyFontInfo;
 
   BodyFontInfo.FontSize    = SWM_MB_CUSTOM_FONT_BODY_HEIGHT;
   BodyFontInfo.FontStyle   = EFI_HII_FONT_STYLE_NORMAL;
   BodyFontInfo.FontName[0] = L'\0';
 
-  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, DialogRect.Top + 20, 300, 50, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Unable to find a wired LAN connection."));
-  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, DialogRect.Top + 60, 300, 50, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Available Wi-Fi networks:"));
+  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, VerticalOffset, 800, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Unable to find a wired LAN connection."));
+  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS);
+  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, VerticalOffset, 800, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Available Wi-Fi networks:"));
+  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS + SECTION_VERTICAL_PADDING_PIXELS);
 
   #define SWM_SS_LISTBOX_CELL_HEIGHT         MsUiScaleByTheme (80)
   #define SWM_SS_LISTBOX_CELL_TEXT_X_OFFSET  MsUiScaleByTheme (10)
@@ -125,7 +119,7 @@ CbmrUICreateWiFiDialog (
 
   WifiSSIDList = new_ListBox (
                    DialogRect.Left + 20,
-                   DialogRect.Top + 100,
+                   VerticalOffset,
                    SWM_SS_LISTBOX_CELL_WIDTH,
                    SWM_SS_LISTBOX_CELL_HEIGHT,
                    0,                         // Flags
@@ -134,25 +128,27 @@ CbmrUICreateWiFiDialog (
                    &gMsColorTable.SingleSelectDialogButtonTextColor,
                    &gMsColorTable.SingleSelectDialogButtonHoverColor,
                    &gMsColorTable.SingleSelectDialogButtonSelectColor,
-                   &gMsColorTable.SingleSelectDialogListBoxGreyoutColor,                                    // Grayed
+                   &gMsColorTable.SingleSelectDialogListBoxGreyoutColor,
                    WifiOptionCells,
                    NULL
                    );
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
-                  TRUE,                // Not highlightable.
-                  FALSE,               // Visible.
-                  (VOID *)WifiSSIDList
-                  );
+  DialogCanvas->AddControl (DialogCanvas, TRUE, FALSE, (VOID *)WifiSSIDList);
 
-  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, DialogRect.Top + 250, 300, 50, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Network Password:"));
+  // Get total list box height.
+  //
+  SWM_RECT  ListBoxFrame;
+  WifiSSIDList->Base.GetControlBounds (WifiSSIDList, &ListBoxFrame);
+  VerticalOffset += ((ListBoxFrame.Bottom - ListBoxFrame.Top + 1) + SECTION_VERTICAL_PADDING_PIXELS);
+
+  DialogCanvas->AddControl (DialogCanvas, FALSE, FALSE, (VOID *)new_Label (DialogRect.Left + 20, VerticalOffset, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.MessageBoxTextColor, &gMsColorTable.MessageBoxBackgroundColor, L"Network Password:"));
+  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + SECTION_VERTICAL_PADDING_PIXELS);
 
   #define SWM_PWD_DIALOG_MAX_PWD_DISPLAY_CHARS  15                        // Password dialog maximum number of password characters to display (editbox size).
 
   PasswordEditBox =   new_EditBox (
                         DialogRect.Left + 20,
-                        DialogRect.Top + 280,
+                        VerticalOffset,
                         SWM_PWD_DIALOG_MAX_PWD_DISPLAY_CHARS,
                         UIT_EDITBOX_TYPE_PASSWORD,
                         &BodyFontInfo,
@@ -165,36 +161,32 @@ CbmrUICreateWiFiDialog (
                         NULL
                         );
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
-                  TRUE,                // Not highlightable.
-                  FALSE,               // Visible.
-                  (VOID *)PasswordEditBox
-                  );
+  DialogCanvas->AddControl (DialogCanvas, TRUE, FALSE, (VOID *)PasswordEditBox);
+
+  // Get total edit box height.
+  //
+  SWM_RECT  EditBoxFrame;
+  PasswordEditBox->Base.GetControlBounds (PasswordEditBox, &EditBoxFrame);
+  VerticalOffset += ((EditBoxFrame.Bottom - EditBoxFrame.Top + 1) + (SECTION_VERTICAL_PADDING_PIXELS * 2));
 
   Button  *ConnectButton = new_Button (
                              (DialogRect.Left + 120),
-                             (DialogRect.Top + 350),
-                             150,
-                             40,
+                             VerticalOffset,
+                             300,
+                             SWM_MB_CUSTOM_FONT_BODY_HEIGHT + 40,
                              &BodyFontInfo,
                              &gMsColorTable.DefaultDialogBackGroundColor,
                              &gMsColorTable.DefaultDialogButtonHoverColor,
                              &gMsColorTable.DefaultDialogButtonSelectColor,
-                             &gMsColorTable.DefaultDialogButtonGrayOutColor,    // GrayOut.
-                             &gMsColorTable.DefaultDialogButtonRingColor,       // Button ring.
-                             &gMsColorTable.DefaultDialogButtonTextColor,       // Normal text.
-                             &gMsColorTable.DefaultDialogButtonSelectTextColor, // Normal text.
+                             &gMsColorTable.DefaultDialogButtonGrayOutColor,
+                             &gMsColorTable.DefaultDialogButtonRingColor,
+                             &gMsColorTable.DefaultDialogButtonTextColor,
+                             &gMsColorTable.DefaultDialogButtonSelectTextColor,
                              L"Connect",
                              (VOID *)(UINTN)SWM_MB_IDOK
                              );
 
-  DialogCanvas->AddControl (
-                  DialogCanvas,
-                  TRUE,                // Not highlightable.
-                  FALSE,               // Visible.
-                  (VOID *)ConnectButton
-                  );
+  DialogCanvas->AddControl (DialogCanvas, TRUE, FALSE, (VOID *)ConnectButton);
 
   DialogCanvas->SetHighlight (
                   DialogCanvas,
@@ -228,15 +220,14 @@ ProcessDialogInput (
   SWM_MB_RESULT    ButtonResult = 0;
   VOID             *pContext    = NULL;
   SWM_INPUT_STATE  InputState;
-  // UINTN            NumberOfEvents = 2;
-  UINTN  NumberOfEvents = 1;
+  UINTN            NumberOfEvents = 2;
 
   EFI_EVENT  WaitEvents[2];
 
   // Wait for user input.
   //
   WaitEvents[0] = gSimpleTextInEx->WaitForKeyEx;
-  // WaitEvents[1] = PointerProtocol->WaitForInput;
+  WaitEvents[1] = PointerProtocol->WaitForInput;
 
   ZeroMem (&InputState, sizeof (SWM_INPUT_STATE));
 
@@ -390,9 +381,10 @@ CbmrUIGetSSIDAndPassword (
   IN UINT8    SSIDPasswordMaxLength
   )
 {
-  EFI_STATUS                               Status                 = EFI_SUCCESS;
-  BOOLEAN                                  DialogWindowRegistered = FALSE;
-  Canvas                                   *WiFiDialogCanvas      = NULL;
+  EFI_STATUS  Status                 = EFI_SUCCESS;
+  BOOLEAN     DialogWindowRegistered = FALSE;
+  Canvas      *WiFiDialogCanvas      = NULL;
+
   EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol;
   EFI_80211_GET_NETWORKS_RESULT            *NetworkList;
 
@@ -446,7 +438,8 @@ CbmrUIGetSSIDAndPassword (
 
   // TODO - limit number of SSIDs presented (sort them?)
 
-  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool (NetworkList->NumOfNetworkDesc * sizeof (UIT_LB_CELLDATA));
+  // IMPORTANT: Allocate one additional entry so the list is null terminated.
+  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool ((NetworkList->NumOfNetworkDesc + 1) * sizeof (UIT_LB_CELLDATA));
 
   if (WifiOptionCells == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
@@ -461,17 +454,19 @@ CbmrUIGetSSIDAndPassword (
     WifiOptionCells[i].CellText         = AllocateZeroPool (sizeof (CHAR16) * (EFI_MAX_SSID_LEN + 1));
 
     SSIdNameToStr (&NetworkList->NetworkDesc[i].Network.SSId, SSIDNameA);
+
     AsciiStrToUnicodeStrS (SSIDNameA, WifiOptionCells[i].CellText, (EFI_MAX_SSID_LEN + 1));
   }
 
   // Change UI toolkit handle to dialog handle.
   InitializeUIToolKit (gDialogHandle);
 
-  // TODO - based on screen size percentages.
-  DialogRect.Left   = 200;
-  DialogRect.Top    = 100;
-  DialogRect.Right  = 600;
-  DialogRect.Bottom = 500;
+  // Calculate pop-up dialog frame size.
+  //
+  DialogRect.Left   = (mBootHorizontalResolution / 4);
+  DialogRect.Top    = 0;
+  DialogRect.Right  = (DialogRect.Left + (mBootHorizontalResolution / 2));
+  DialogRect.Bottom = (mBootVerticalResolution - 1);
 
   // Register with the Simple Window Manager to get mouse and touch input events.
   //
@@ -508,7 +503,7 @@ CbmrUIGetSSIDAndPassword (
   SWM_MB_RESULT  Result = ProcessDialogInput (
                             mSWMProtocol,
                             WiFiDialogCanvas,
-                            NULL,
+                            mCbmrPointerProtocol,
                             0
                             );
 
