@@ -97,21 +97,14 @@
   # If set to 0 gives an unlimited number of attempts.
   gOemPkgTokenSpaceGuid.PcdMaxPasswordAttempts|0x3|UINT8|0x0000000B
 
-    ## Cloud Bare Metal Recovery Sample Library Settings
+  ## Cloud Bare Metal Recovery Sample Library Settings
   #
-  # GOP graphics mode (index) to use for cBMR application.
-  gOemPkgTokenSpaceGuid.PcdCbmrGraphicsMode                   |1|UINT32|0x00010090
-  # Platform supports Wi-Fi for cBMR operations (TRUE/FALSE).
-  gOemPkgTokenSpaceGuid.PcdCbmrEnableWifiSupport              |TRUE|BOOLEAN|0x00010091
-  # Timeout (default 30 seconds) for Wi-Fi network scan.
-  gOemPkgTokenSpaceGuid.PcdCbmrGetWifiNetworksTimeout         |30|UINT32|0x00010092
-  # Timeout (default 30 seconds) for connecting to a Wi-Fi access point.
-  gOemPkgTokenSpaceGuid.PcdCbmrWifiNetworkConnectTimeout      |30|UINT32|0x00010093
-  # Timeout (default 30 seconds) for determining DHCP vs. static IP policy state.
-  gOemPkgTokenSpaceGuid.PcdCbmrSetDhcpPolicyTimeout           |30|UINT32|0x00010094
-  # Timeout (default 30 seconds) when talking through the network interface.
-  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkInterfaceInfoTimeout |30|UINT32|0x00010095
-  # Timeout (default 30 seconds) for getting an IP address.
-  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkIPAddressTimeout     |30|UINT32|0x00010096
+  gOemPkgTokenSpaceGuid.PcdCbmrGraphicsMode                   |2|UINT32|0x00010090          # GOP graphics mode (index) to use for cBMR application.
+  gOemPkgTokenSpaceGuid.PcdCbmrEnableWifiSupport              |FALSE|BOOLEAN|0x00010091      # Platform supports Wi-Fi for cBMR operations (TRUE/FALSE).
+  gOemPkgTokenSpaceGuid.PcdCbmrGetWifiNetworksTimeout         |20|UINT32|0x00010092         # Timeout (default 20 seconds) for Wi-Fi network scan.
+  gOemPkgTokenSpaceGuid.PcdCbmrWifiNetworkConnectTimeout      |10|UINT32|0x00010093         # Timeout (default 10 seconds) for connecting to a Wi-Fi access point.
+  gOemPkgTokenSpaceGuid.PcdCbmrSetDhcpPolicyTimeout           |10|UINT32|0x00010094         # Timeout (default 10 seconds) for determining DHCP vs. static IP policy state.
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkInterfaceInfoTimeout |10|UINT32|0x00010095         # Timeout (default 10 seconds) when talking through the network interface.
+  gOemPkgTokenSpaceGuid.PcdCbmrGetNetworkIPAddressTimeout     |10|UINT32|0x00010096         # Timeout (default 10 seconds) for getting an IP address.
   # FFS GUID to find the Cloud BMR company logo bitmap file (GUID: {0EC6B44F-B26A-472C-A508-291F25E68D8B}).
   gOemPkgTokenSpaceGuid.PcdCloudBMRCompanyLogoFile            |{ 0x4F, 0xB4, 0xC6, 0x0E, 0x6A, 0xB2, 0x2C, 0x47, 0xA5, 0x08, 0x29, 0x1F, 0x25, 0xE6, 0x8D, 0x8B }|VOID*|0x00010097

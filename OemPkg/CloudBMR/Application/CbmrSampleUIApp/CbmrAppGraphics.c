@@ -1,13 +1,15 @@
 /** @file CbmrAppGraphics.c
 
-  cBMR Sample Application graphics helper functions.
+  cBMR (Cloud Bare Metal Recovery) sample application graphics helper functions
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 #include "CbmrApp.h"
+
+extern CBMR_APP_CONTEXT  gAppContext;
 
 typedef struct _EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER {
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION    *Mode;
@@ -89,7 +91,6 @@ GfxSetGraphicsResolution (
 
   GraphicsModes = AllocateZeroPool (sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER) * GraphicsMode->MaxMode);
   if (GraphicsModes == NULL) {
-    DEBUG ((DEBUG_ERROR, "AllocateZeroPool() failed\n"));
     Status = EFI_OUT_OF_RESOURCES;
     goto Exit;
   }
@@ -113,33 +114,18 @@ GfxSetGraphicsResolution (
     DEBUG ((DEBUG_INFO, "INFO [cBMR App]: GOP Mode %d (Horizontal=%d, Vertical=%d).\r\n", GraphicsModes[i].Index, GraphicsModes[i].Mode->HorizontalResolution, GraphicsModes[i].Mode->VerticalResolution));
   }
 
- #if 0
-  // If no graphics mode has been set at build time, choose a mode mid-way in the available list.
-  //
-  if (SelectedModeIndex == -1) {
-    // Sort the resolutions based on HorizontalResolution
-    //
-    PerformQuickSort (
-      GraphicsModes,
-      GraphicsMode->MaxMode,
-      sizeof (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION_WRAPPER),
-      GfxModeCompareFunc
-      );
-
-    // Pick the middle resolution from the available list of resolutions
-    //
-    SelectedModeIndex = GraphicsModes[GraphicsMode->MaxMode / 2].Index;
-  }
-
- #endif
-
-  DEBUG ((DEBUG_INFO, "Picking graphics mode: %d\n", DesiredMode));
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Settings graphics mode: %d\n", DesiredMode));
   Status = GraphicsProtocol->SetMode (GraphicsProtocol, DesiredMode);
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "SetMode() failed : (%r)\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to set graphics mode (%r).\n", Status));
     goto Exit;
   }
+
+  // Capture selected resolution in application context.
+  //
+  gAppContext.HorizontalResolution = GraphicsModes[DesiredMode].Mode->HorizontalResolution;
+  gAppContext.VerticalResolution   = GraphicsModes[DesiredMode].Mode->VerticalResolution;
 
 Exit:
   if (GraphicsModes != NULL) {

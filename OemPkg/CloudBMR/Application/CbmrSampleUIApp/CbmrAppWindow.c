@@ -1,69 +1,48 @@
 /** @file CbmrAppWindow.h
 
-  cBMR Sample Application main window routines.
+  cBMR (Cloud Bare Metal Recovery) sample application main window implementation.  The window
+  is used to present status, network information, cBMR payload details, and download progress.
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 #include "CbmrApp.h"
-
 #include <Pi/PiFirmwareFile.h>
-
-#include <Library/BmpSupportLib.h>
 #include <Library/DxeServicesLib.h>
-#include <Library/MsUiThemeLib.h>
-#include <Library/MsColorTableLib.h>
 
-#include <MsDisplayEngine.h>
-
-#include <Protocol/OnScreenKeyboard.h>
-#include <Protocol/SimpleWindowManager.h>
-
-#include <UIToolKit/SimpleUIToolKit.h>
-
-
-struct _CBMR_UI_DYNAMIC_LABELS {
-  Label    *cBMRState;
-  Label    *DownloadFileCount;
-  Label    *DownloadTotalSize;
-  Label    *NetworkState;
-  Label    *NetworkSSID;
-  Label    *NetworkPolicy;
-  Label    *NetworkIPAddr;
-  Label    *NetworkGatewayAddr;
-  Label    *NetworkDNSAddr;
-} cBMRUIDataLabels;
-
-ProgressBar  *DownloadProgress;
-
-typedef struct _CBMR_UI {
-  BOOLEAN    IsUIInitialized;
-} CBMR_UI, *PCBMR_UI;
-
-CBMR_UI  gCmbrUI = { 0 };
-
-EFI_GRAPHICS_OUTPUT_PROTOCOL       *mGop;
-MS_ONSCREEN_KEYBOARD_PROTOCOL      *mOSKProtocol;
-MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *mSWMProtocol;
-
-SWM_RECT                              WindowRect;
-static EFI_ABSOLUTE_POINTER_PROTOCOL  *mCbmrPointerProtocol;
-static EFI_EVENT                      mCbmrPaintEvent;
-
+// Global definitions.
 //
-// Boot video resolution and text mode.
+// Application window UI elements that will be updated during cBMR.
+static struct _CBMR_DYNAMIC_UI_ELEMENTS {
+  struct {
+    Label    *CbmrState;
+    Label    *DownloadFileCount;
+    Label    *DownloadTotalSize;
+    Label    *NetworkState;
+    Label    *NetworkSSID;
+    Label    *NetworkPolicy;
+    Label    *NetworkIPAddr;
+    Label    *NetworkGatewayAddr;
+    Label    *NetworkDNSAddr;
+  } DataLabels;
+
+  ProgressBar    *DownloadProgress;
+} gCbmrDynamicUIElements;
+
+// Protocol-related variables.
+static MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *mSWMProtocol;
+static EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *gSimpleTextInEx;
+static EFI_ABSOLUTE_POINTER_PROTOCOL      *gCbmrPointerProtocol;
+static EFI_EVENT                          gCbmrPaintEvent;
+
+// External definitions.
 //
-UINT32  mBootHorizontalResolution = 0;
-UINT32  mBootVerticalResolution   = 0;
+extern UINTN             PcdCloudBMRCompanyLogoFile;
+extern CBMR_APP_CONTEXT  gAppContext;
 
-UINT32  mTitleBarWidth, mTitleBarHeight;
-UINT32  mMasterFrameWidth, mMasterFrameHeight;
-
-extern UINTN                       PcdCloudBMRCompanyLogoFile;
-EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *gSimpleTextInEx;
-
+static
 Bitmap *
 EFIAPI
 CbmrUIFetchBitmap (
@@ -136,12 +115,12 @@ CbmrUIUpdateDownloadProgress (
   UINT8  Percent
   )
 {
-  if (DownloadProgress == NULL) {
+  if (gCbmrDynamicUIElements.DownloadProgress == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
-  DownloadProgress->UpdateProgressPercent (DownloadProgress, Percent);
-  DownloadProgress->Base.Draw (DownloadProgress, FALSE, NULL, NULL);
+  gCbmrDynamicUIElements.DownloadProgress->UpdateProgressPercent (gCbmrDynamicUIElements.DownloadProgress, Percent);
+  gCbmrDynamicUIElements.DownloadProgress->Base.Draw (gCbmrDynamicUIElements.DownloadProgress, FALSE, NULL, NULL);
 
   return EFI_SUCCESS;
 }
@@ -181,58 +160,58 @@ CbmrUIUpdateLabelValue (
 
   switch (LabelType) {
     case cBMRState:
-      cBMRUIDataLabels.cBMRState->Base.GetControlBounds (cBMRUIDataLabels.cBMRState, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.CbmrState->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.CbmrState, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.cBMRState->UpdateLabelText (cBMRUIDataLabels.cBMRState, String);
-      cBMRUIDataLabels.cBMRState->Base.Draw (cBMRUIDataLabels.cBMRState, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.CbmrState->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.CbmrState, String);
+      gCbmrDynamicUIElements.DataLabels.CbmrState->Base.Draw (gCbmrDynamicUIElements.DataLabels.CbmrState, FALSE, NULL, NULL);
       break;
     case DownloadFileCount:
-      cBMRUIDataLabels.DownloadFileCount->Base.GetControlBounds (cBMRUIDataLabels.DownloadFileCount, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.DownloadFileCount->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.DownloadFileCount, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.DownloadFileCount->UpdateLabelText (cBMRUIDataLabels.DownloadFileCount, String);
-      cBMRUIDataLabels.DownloadFileCount->Base.Draw (cBMRUIDataLabels.DownloadFileCount, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.DownloadFileCount->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.DownloadFileCount, String);
+      gCbmrDynamicUIElements.DataLabels.DownloadFileCount->Base.Draw (gCbmrDynamicUIElements.DataLabels.DownloadFileCount, FALSE, NULL, NULL);
       break;
     case DownloadTotalSize:
-      cBMRUIDataLabels.DownloadTotalSize->Base.GetControlBounds (cBMRUIDataLabels.DownloadTotalSize, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.DownloadTotalSize->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.DownloadTotalSize, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.DownloadTotalSize->UpdateLabelText (cBMRUIDataLabels.DownloadTotalSize, String);
-      cBMRUIDataLabels.DownloadTotalSize->Base.Draw (cBMRUIDataLabels.DownloadTotalSize, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.DownloadTotalSize->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.DownloadTotalSize, String);
+      gCbmrDynamicUIElements.DataLabels.DownloadTotalSize->Base.Draw (gCbmrDynamicUIElements.DataLabels.DownloadTotalSize, FALSE, NULL, NULL);
       break;
     case NetworkState:
-      cBMRUIDataLabels.NetworkState->Base.GetControlBounds (cBMRUIDataLabels.NetworkState, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkState->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkState, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkState->UpdateLabelText (cBMRUIDataLabels.NetworkState, String);
-      cBMRUIDataLabels.NetworkState->Base.Draw (cBMRUIDataLabels.NetworkState, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkState->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkState, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkState->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkState, FALSE, NULL, NULL);
       break;
     case NetworkSSID:
-      cBMRUIDataLabels.NetworkSSID->Base.GetControlBounds (cBMRUIDataLabels.NetworkSSID, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkSSID->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkSSID, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkSSID->UpdateLabelText (cBMRUIDataLabels.NetworkSSID, String);
-      cBMRUIDataLabels.NetworkSSID->Base.Draw (cBMRUIDataLabels.NetworkSSID, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkSSID->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkSSID, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkSSID->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkSSID, FALSE, NULL, NULL);
       break;
     case NetworkPolicy:
-      cBMRUIDataLabels.NetworkPolicy->Base.GetControlBounds (cBMRUIDataLabels.NetworkPolicy, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkPolicy->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkPolicy, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkPolicy->UpdateLabelText (cBMRUIDataLabels.NetworkPolicy, String);
-      cBMRUIDataLabels.NetworkPolicy->Base.Draw (cBMRUIDataLabels.NetworkPolicy, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkPolicy->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkPolicy, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkPolicy->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkPolicy, FALSE, NULL, NULL);
       break;
     case NetworkIPAddr:
-      cBMRUIDataLabels.NetworkIPAddr->Base.GetControlBounds (cBMRUIDataLabels.NetworkIPAddr, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkIPAddr->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkIPAddr, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkIPAddr->UpdateLabelText (cBMRUIDataLabels.NetworkIPAddr, String);
-      cBMRUIDataLabels.NetworkIPAddr->Base.Draw (cBMRUIDataLabels.NetworkIPAddr, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkIPAddr->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkIPAddr, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkIPAddr->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkIPAddr, FALSE, NULL, NULL);
       break;
     case NetworkGatewayAddr:
-      cBMRUIDataLabels.NetworkGatewayAddr->Base.GetControlBounds (cBMRUIDataLabels.NetworkGatewayAddr, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkGatewayAddr->UpdateLabelText (cBMRUIDataLabels.NetworkGatewayAddr, String);
-      cBMRUIDataLabels.NetworkGatewayAddr->Base.Draw (cBMRUIDataLabels.NetworkGatewayAddr, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr, FALSE, NULL, NULL);
       break;
     case NetworkDNSAddr:
-      cBMRUIDataLabels.NetworkDNSAddr->Base.GetControlBounds (cBMRUIDataLabels.NetworkDNSAddr, &LabelFrame);
+      gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr->Base.GetControlBounds (gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr, &LabelFrame);
       CbmrUIFillRect (LabelFrame, &gMsColorTable.FormCanvasBackgroundColor);
-      Status = cBMRUIDataLabels.NetworkDNSAddr->UpdateLabelText (cBMRUIDataLabels.NetworkDNSAddr, String);
-      cBMRUIDataLabels.NetworkDNSAddr->Base.Draw (cBMRUIDataLabels.NetworkDNSAddr, FALSE, NULL, NULL);
+      Status = gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr->UpdateLabelText (gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr, String);
+      gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr->Base.Draw (gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr, FALSE, NULL, NULL);
       break;
     default:
       Status = EFI_INVALID_PARAMETER;
@@ -247,14 +226,11 @@ CbmrUICreateWindow (
   Canvas  **WindowCanvas
   )
 {
-  EFI_STATUS  Status         = EFI_SUCCESS;
-  UINT32      OSKMode        = 0;
-  UINT32      VerticalOffset = 0;
-
-  //
-  // Get current video resolution and text mode.
-  //
-  GfxGetGraphicsResolution (&mBootHorizontalResolution, &mBootVerticalResolution);
+  EFI_STATUS                     Status         = EFI_SUCCESS;
+  UINT32                         OSKMode        = 0;
+  UINT32                         VerticalOffset = 0;
+  SWM_RECT                       WindowRect;
+  MS_ONSCREEN_KEYBOARD_PROTOCOL  *mOSKProtocol = NULL;
 
   // Locate the on-screen keyboard (OSK) protocol.
   //
@@ -311,8 +287,8 @@ CbmrUICreateWindow (
 
   WindowRect.Left   = 0;
   WindowRect.Top    = 0;
-  WindowRect.Right  = (mBootHorizontalResolution - 1);
-  WindowRect.Bottom = (mBootVerticalResolution - 1);
+  WindowRect.Right  = (gAppContext.HorizontalResolution - 1);
+  WindowRect.Bottom = (gAppContext.VerticalResolution - 1);
 
   // Register with the Simple Window Manager to get mouse and touch input events.
   //
@@ -323,8 +299,8 @@ CbmrUICreateWindow (
                            &WindowRect,
                            NULL,
                            NULL,
-                           &mCbmrPointerProtocol,
-                           &mCbmrPaintEvent
+                           &gCbmrPointerProtocol,
+                           &gCbmrPaintEvent
                            );
 
   if (EFI_ERROR (Status)) {
@@ -374,7 +350,7 @@ CbmrUICreateWindow (
 
   // Start the Vertical Offset at 5% screen height from the top.
   //
-  VerticalOffset = ((mBootVerticalResolution * 5) / 100);
+  VerticalOffset = ((gAppContext.VerticalResolution * 5) / 100);
 
   // Create a company bitmap element from the file embedded in the UEFI resource section.
   //
@@ -400,14 +376,14 @@ CbmrUICreateWindow (
   // company logo bitmap (the tallest element).
   //
   SWM_RECT  HeaderGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + LogoBitmapHeight) };
-  Grid      *HeaderGrid    = new_Grid (LocalWindowCanvas, HeaderGridRect, 1, 4, FALSE);
+  Grid      *HeaderGrid    = new_Grid (LocalWindowCanvas, HeaderGridRect, 1, 8, FALSE);
 
   LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)HeaderGrid);
   VerticalOffset += (LogoBitmapHeight + SECTION_VERTICAL_PADDING_PIXELS);
 
   // Add the company logo bitmap to the grid.
   //
-  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, 0, (VOID *)CompanyLogoBitmap);
+  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, (gAppContext.HorizontalResolution <= 800 ? 0 : 1), (VOID *)CompanyLogoBitmap);
 
   // Define the header font.
   //
@@ -419,7 +395,7 @@ CbmrUICreateWindow (
 
   // Add title text to the grid.
   //
-  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, 1, (VOID *)new_Label (0, 0, 800, SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT, &HeadingFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Cloud Bare Metal Recovery"));
+  HeaderGrid->AddControl (HeaderGrid, FALSE, FALSE, 0, 2, (VOID *)new_Label (0, 0, 800, SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT, &HeadingFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Cloud Bare Metal Recovery"));
 
   // Define the body font.
   //
@@ -443,12 +419,12 @@ CbmrUICreateWindow (
   StateGrid->AddControl (StateGrid, FALSE, FALSE, 1, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Number of Files:"));
   StateGrid->AddControl (StateGrid, FALSE, FALSE, 2, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Total Size:"));
 
-  cBMRUIDataLabels.cBMRState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
-  StateGrid->AddControl (StateGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.cBMRState);
-  cBMRUIDataLabels.DownloadFileCount = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  StateGrid->AddControl (StateGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.DownloadFileCount);
-  cBMRUIDataLabels.DownloadTotalSize = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  StateGrid->AddControl (StateGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.DownloadTotalSize);
+  gCbmrDynamicUIElements.DataLabels.CbmrState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L" ");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 0, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.CbmrState);
+  gCbmrDynamicUIElements.DataLabels.DownloadFileCount = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 1, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.DownloadFileCount);
+  gCbmrDynamicUIElements.DataLabels.DownloadTotalSize = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  StateGrid->AddControl (StateGrid, FALSE, FALSE, 2, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.DownloadTotalSize);
 
   // Create network status grid (6 rows of text).
   //
@@ -467,18 +443,18 @@ CbmrUICreateWindow (
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"Gateway:"));
   NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 1, (VOID *)new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextNormalColor, &gMsColorTable.FormCanvasBackgroundColor, L"DNS Server:"));
 
-  cBMRUIDataLabels.NetworkState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Disconnected");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 2, (VOID *)cBMRUIDataLabels.NetworkState);
-  cBMRUIDataLabels.NetworkSSID = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 2, (VOID *)cBMRUIDataLabels.NetworkSSID);
-  cBMRUIDataLabels.NetworkPolicy = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 2, (VOID *)cBMRUIDataLabels.NetworkPolicy);
-  cBMRUIDataLabels.NetworkIPAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 2, (VOID *)cBMRUIDataLabels.NetworkIPAddr);
-  cBMRUIDataLabels.NetworkGatewayAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 2, (VOID *)cBMRUIDataLabels.NetworkGatewayAddr);
-  cBMRUIDataLabels.NetworkDNSAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
-  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 2, (VOID *)cBMRUIDataLabels.NetworkDNSAddr);
+  gCbmrDynamicUIElements.DataLabels.NetworkState = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"Disconnected");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 0, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkState);
+  gCbmrDynamicUIElements.DataLabels.NetworkSSID = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 1, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkSSID);
+  gCbmrDynamicUIElements.DataLabels.NetworkPolicy = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 2, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkPolicy);
+  gCbmrDynamicUIElements.DataLabels.NetworkIPAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 3, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkIPAddr);
+  gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 4, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkGatewayAddr);
+  gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr = new_Label (0, 0, 500, SWM_MB_CUSTOM_FONT_BODY_HEIGHT, &BodyFontInfo, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.FormCanvasBackgroundColor, L"-");
+  NetworkStatusGrid->AddControl (NetworkStatusGrid, FALSE, FALSE, 5, 2, (VOID *)gCbmrDynamicUIElements.DataLabels.NetworkDNSAddr);
 
   // Create download progress bar grid (1 row of text).
   //
@@ -494,13 +470,13 @@ CbmrUICreateWindow (
 
   // Add download progress bar to grid.
   //
-  DownloadProgress = new_ProgressBar (0, 0, 300, 5, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.MasterFrameBackgroundColor, 0);
-  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 2, (VOID *)DownloadProgress);
+  gCbmrDynamicUIElements.DownloadProgress = new_ProgressBar (0, 0, 300, 5, &gMsColorTable.LabelTextLargeColor, &gMsColorTable.MasterFrameBackgroundColor, 0);
+  DownloadProgressGrid->AddControl (DownloadProgressGrid, FALSE, FALSE, 0, 2, (VOID *)gCbmrDynamicUIElements.DownloadProgress);
 
   // Create buttons to start recovery and to cancel.
   //
   Button  *GoButton = new_Button (
-                        (mBootHorizontalResolution / 2) - (300 + 40),
+                        (gAppContext.HorizontalResolution / 2) - (300 + 40),
                         VerticalOffset,
                         300,
                         SWM_MB_CUSTOM_FONT_BODY_HEIGHT + 40,
@@ -519,7 +495,7 @@ CbmrUICreateWindow (
   LocalWindowCanvas->AddControl (LocalWindowCanvas, TRUE, FALSE, (VOID *)GoButton);
 
   Button  *CancelButton = new_Button (
-                            (mBootHorizontalResolution / 2) + 40,
+                            (gAppContext.HorizontalResolution / 2) + 40,
                             VerticalOffset,
                             300,
                             SWM_MB_CUSTOM_FONT_BODY_HEIGHT + 40,
@@ -554,7 +530,6 @@ Exit:
   return Status;
 }
 
-static
 SWM_MB_RESULT
 ProcessWindowInput (
   IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *this,
@@ -600,7 +575,6 @@ ProcessWindowInput (
 
       // If user clicked either of the buttons, exit.
       if ((SWM_MB_IDCANCEL == ButtonResult) || (SWM_MB_IDOK == ButtonResult)) {
-        DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Button clicked.\n"));
         break;
       }
     }
@@ -730,7 +704,7 @@ CbmrUIWindowMessageHandler (
   return ProcessWindowInput (
            mSWMProtocol,
            WindowCanvas,
-           mCbmrPointerProtocol,
+           gCbmrPointerProtocol,
            0
            );
 }

@@ -1,12 +1,11 @@
 /** @file CbmrAppNetworkSupport.c
 
-    cBMR Sample Application network helper functions.
+  cBMR (Cloud Bare Metal Recovery) sample application network helper functions
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The library is intended to be a sample of how to initiate the cBMR (Cloud Bare Metal Recovery) process and this file
-  specifically contains the primary entry function to initialize the network.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 
 #include "CbmrApp.h"
@@ -14,9 +13,12 @@
 // Event used when a network protocol process is blocked by another in use process
 EFI_EVENT  gEventFlag = NULL;
 
-extern UINTN  PcdCbmrSetDhcpPolicyTimeout;
-extern UINTN  PcdCbmrGetNetworkIPAddressTimeout;
-extern UINTN  PcdCbmrGetNetworkInterfaceInfoTimeout;
+extern UINTN    PcdCbmrSetDhcpPolicyTimeout;
+extern UINTN    PcdCbmrGetNetworkIPAddressTimeout;
+extern UINTN    PcdCbmrGetNetworkInterfaceInfoTimeout;
+extern BOOLEAN  PcdCbmrEnableWifiSupport;
+
+extern CBMR_APP_CONTEXT  gAppContext;
 
 /**
   Network event callback to support WaitForDataNotify ().  The callback will close the triggering event and if the
@@ -91,7 +93,7 @@ WaitForDataNotify (
                                  Event
                                  );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR:  EFI_IP4_CONFIG2_PROTOCOL::RegisterDataNotify() - Status %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]:  EFI_IP4_CONFIG2_PROTOCOL::RegisterDataNotify() - Status %r\n", Status));
     gBS->CloseEvent (Event);
     return Status;
   }
@@ -178,7 +180,7 @@ AsynchronousIP4CfgGetData (
   // Loop while not ready and attempts are < 3
   for (Attempt = 0; Attempt < 3 && Status == EFI_NOT_READY; Attempt++) {
     if (Attempt > 0) {
-      DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_IP4_CONFIG2_PROTOCOL::GetData() indicated data is ready, but returned EFI_NOT_READY\n"));
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::GetData() indicated data is ready, but returned EFI_NOT_READY\n"));
     }
 
     DEBUG ((DEBUG_INFO, "[cBMR] EFI_IP4_CONFIG2_PROTOCOL::GetData() blocked by an existing process\n"));
@@ -215,7 +217,7 @@ DebugPrintNetworkInfo (
 {
   UINTN  Size, x;
 
-  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
   DEBUG ((DEBUG_INFO, "    Interface Name:           %s\n", InterfaceInfo->Name));
   DEBUG ((DEBUG_INFO, "    RFC 1700 Hardware Type:   0x%02x\n", InterfaceInfo->IfType));
   DEBUG ((DEBUG_INFO, "    HW MAC Address:           %02X", InterfaceInfo->HwAddress.Addr[0]));
@@ -287,7 +289,7 @@ LocateIp4ConfigProtocol (
   UINTN       HandleCount;
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
 
   // Find all network adapters that are bound to the IP4 Config Protocol
   Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiIp4Config2ProtocolGuid, NULL, &HandleCount, &Handles);
@@ -298,9 +300,9 @@ LocateIp4ConfigProtocol (
   // This sample only supports 1 adapter.  If more are present in the system, this section needs to be expanded to
   // examine the path protocols bound to each handle to determine which one to use.
   if (HandleCount > 1) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] WARNING: Found %d EFI_IP4_CONFIG2_PROTOCOL handles\n", HandleCount));
-    DEBUG ((DEBUG_ERROR, "                This sample app only supports 1 adapter\n"));
-    DEBUG ((DEBUG_ERROR, "                Continuing to attempt connection with the first handle found\n"));
+    DEBUG ((DEBUG_ERROR, "WARN [cBMR App]: Found %d EFI_IP4_CONFIG2_PROTOCOL handles\n", HandleCount));
+    DEBUG ((DEBUG_ERROR, "                 This sample app only supports 1 adapter\n"));
+    DEBUG ((DEBUG_ERROR, "                 Continuing to attempt connection with the first handle found\n"));
   }
 
   // Get the EFI_IP4_CONFIG2_PROTOCOL pointer from the handle
@@ -311,6 +313,88 @@ LocateIp4ConfigProtocol (
   }
 
   return EFI_SUCCESS;
+}
+
+EFI_STATUS
+EFIAPI
+GetDNSServerIpAddress (
+  EFI_IPv4_ADDRESS  *DNSIpAddress
+  )
+{
+  EFI_STATUS                Status      = EFI_SUCCESS;
+  EFI_HANDLE                *Handles    = NULL;
+  UINTN                     HandleCount = 0;
+  EFI_IP4_CONFIG2_PROTOCOL  *Ip4Config2 = NULL;
+  UINTN                     Size        = 0;
+  EFI_IPv4_ADDRESS          *DnsInfo    = NULL;
+
+  Status = gBS->LocateHandleBuffer (
+                  ByProtocol,
+                  &gEfiIp4ServiceBindingProtocolGuid,
+                  NULL,
+                  &HandleCount,
+                  &Handles
+                  );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate IP4 Service Binding protocol (%r).\r\n", Status));
+    goto Exit;
+  }
+
+  for (UINTN i = 0; i < HandleCount; i++) {
+    Status = gBS->HandleProtocol (Handles[i], &gEfiIp4Config2ProtocolGuid, (VOID **)&Ip4Config2);
+    if (EFI_ERROR (Status)) {
+      Status = EFI_SUCCESS;
+      continue;
+    }
+
+    // DNS Server List
+    //
+    Size   = 0;
+    Status = Ip4Config2->GetData (Ip4Config2, Ip4Config2DataTypeDnsServer, &Size, NULL);
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      DnsInfo = AllocateZeroPool (Size);
+    } else if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get size of DNS Server List buffer via Ip4Config2DataTypeDnsServer (%r).\r\n", Status));
+      goto Exit;
+    }
+
+    Status = Ip4Config2->GetData (Ip4Config2, Ip4Config2DataTypeDnsServer, &Size, DnsInfo);
+
+    if (EFI_ERROR (Status)) {
+            DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get DNS Server List buffer via Ip4Config2DataTypeDnsServer (%r).\r\n", Status));
+      goto Exit;
+    }
+
+    for (UINTN j = 0; j < Size / sizeof (EFI_IPv4_ADDRESS); j++) {
+      EFI_IPv4_ADDRESS  *DnsServer = &DnsInfo[j];
+      if ((DnsServer->Addr[0] == 0) && (DnsServer->Addr[1] == 0) && (DnsServer->Addr[2] == 0) &&
+          (DnsServer->Addr[3] == 0))
+      {
+        continue;
+      }
+
+      DNSIpAddress->Addr[0] = DnsServer->Addr[0];
+      DNSIpAddress->Addr[1] = DnsServer->Addr[1];
+      DNSIpAddress->Addr[2] = DnsServer->Addr[2];
+      DNSIpAddress->Addr[3] = DnsServer->Addr[3];
+
+      break;
+    }
+  }
+
+Exit:
+
+  // Clean-up.
+  //
+  if (Handles != NULL) {
+    FreePool (Handles);
+  }
+
+  if (DnsInfo != NULL) {
+    FreePool (DnsInfo);
+  }
+
+  return Status;
 }
 
 /**
@@ -326,11 +410,10 @@ ConfigureNetwork (
   IN EFI_IP4_CONFIG2_PROTOCOL  *Ip4Config2Protocol
   )
 {
-  EFI_IP4_CONFIG2_POLICY  Policy;
   EFI_STATUS              Status;
   UINTN                   Size;
 
-  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
 
   // Perform a config read to determine if the network is already configured for DHCP
   Size   = sizeof (EFI_IP4_CONFIG2_POLICY);
@@ -338,29 +421,29 @@ ConfigureNetwork (
              Ip4Config2Protocol,
              Ip4Config2DataTypePolicy,
              &Size,
-             &Policy,
+             &gAppContext.NetworkPolicy,
              FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
     return Status;
   }
 
-  if (Policy == Ip4Config2PolicyDhcp) {
+  if (gAppContext.NetworkPolicy == Ip4Config2PolicyDhcp) {
     return EFI_SUCCESS;
   }
 
   // If not, send the configuration policy request for DHCP
-  Policy = Ip4Config2PolicyDhcp;
-  Status = AsynchronousIP4CfgSetData (
-             Ip4Config2Protocol,
-             Ip4Config2DataTypePolicy,
-             sizeof (EFI_IP4_CONFIG2_POLICY),
-             &Policy,
-             FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
-             );
+  gAppContext.NetworkPolicy = Ip4Config2PolicyDhcp;
+  Status                    = AsynchronousIP4CfgSetData (
+                                Ip4Config2Protocol,
+                                Ip4Config2DataTypePolicy,
+                                sizeof (EFI_IP4_CONFIG2_POLICY),
+                                &gAppContext.NetworkPolicy,
+                                FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
+                                );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_IP4_CONFIG2_PROTOCOL::SetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::SetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
     return Status;
   }
 
@@ -370,17 +453,17 @@ ConfigureNetwork (
              Ip4Config2Protocol,
              Ip4Config2DataTypePolicy,
              &Size,
-             &Policy,
+             &gAppContext.NetworkPolicy,
              FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
     return Status;
   }
 
-  if (Policy != Ip4Config2PolicyDhcp) {
-    DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp )\n"));
-    DEBUG ((DEBUG_ERROR, "       Policy data was not committed to driver\n"));
+  if (gAppContext.NetworkPolicy != Ip4Config2PolicyDhcp) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp )\n"));
+    DEBUG ((DEBUG_ERROR, "                  Policy data was not committed to driver\n"));
     return EFI_PROTOCOL_ERROR;
   }
 
@@ -410,7 +493,7 @@ WaitForIpAddress (
 
   #define TIMEOUT_LOOP_PAUSE_IN_mS  250
 
-  DEBUG ((DEBUG_INFO, "[cBMR] %a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
 
   // Timeout loop
   Timeout_mS = FixedPcdGet32 (PcdCbmrGetNetworkIPAddressTimeout) * 1000;
@@ -430,6 +513,7 @@ WaitForIpAddress (
 
     // Allocate buffer requested from first call
     Info = (EFI_IP4_CONFIG2_INTERFACE_INFO *)AllocateZeroPool (Size);
+
     if (Info == NULL) {
       return EFI_OUT_OF_RESOURCES;
     }
@@ -465,7 +549,7 @@ WaitForIpAddress (
 
   // If here, the IP address never changed from 0's
   Status = EFI_TIMEOUT;
-  DEBUG ((DEBUG_ERROR, "[cBMR] ERROR: Failed to detect a valid IP address - Status %r\n", Status));
+  DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to detect a valid IP address - Status %r\n", Status));
   return Status;
 }
 
@@ -476,7 +560,7 @@ WaitForIpAddress (
 **/
 EFI_STATUS
 EFIAPI
-ConnectToWiredLAN (
+ConnectToNetwork (
   EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
   )
 {
@@ -515,6 +599,81 @@ ConnectToWiredLAN (
   //
 
   DebugPrintNetworkInfo (Ip4Config2Protocol, *InterfaceInfo);
-  // FreePool(InterfaceInfo);
+
   return EFI_SUCCESS;
+}
+
+EFI_STATUS
+EFIAPI
+FindAndConnectToNetwork (
+  OUT EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
+  )
+{
+  EFI_STATUS  Status = EFI_SUCCESS;
+  CHAR16      SSIDName[SSID_MAX_NAME_LENGTH];
+  CHAR16      SSIDPassword[SSID_MAX_PASSWORD_LENGTH];
+
+  // Zero stack variables.
+  //
+  ZeroMem (SSIDName, sizeof (SSIDName));
+  ZeroMem (SSIDPassword, sizeof (SSIDPassword));
+
+  // First try to connect to an active (usually wired) network.
+  //
+  CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
+  Status = ConnectToNetwork (InterfaceInfo);
+
+  // If that fails, scan for Wi-Fi access points, present a list for the user to select
+  // and try to connect to the selected Wi-Fi access point.
+  //
+  if (EFI_ERROR (Status)) {
+    // If the system designer didn't enable support for Wi-Fi, exit here.
+    //
+    if (FeaturePcdGet (PcdCbmrEnableWifiSupport) == FALSE) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Unable to connect to a wired LAN network and Wi-Fi isn\'t supported on this platform.\r\n"));
+      goto Exit;
+    }
+
+    // Present WiFi SSID list and try to connect.
+    //
+    DEBUG ((DEBUG_WARN, "WARN [cBMR App]: Unable to connect to a (wired) network, looking for a Wi-Fi access point.\r\n"));
+
+    // Prompt the user for an SSID and password.
+    //
+    Status = CbmrUIGetSSIDAndPassword (&SSIDName[0], SSID_MAX_NAME_LENGTH, &SSIDPassword[0], SSID_MAX_PASSWORD_LENGTH);
+
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to retrieve Wi-Fi SSID and password from user (%r).\r\n", Status));
+      goto Exit;
+    }
+
+    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: SSIDname=%s, SSIDpassword=%s (%r).\r\n", SSIDName, SSIDPassword, Status));
+
+    // Try to connect to specified Wi-Fi access point with password provided.
+    //
+    UnicodeStrToAsciiStrS (SSIDName, gAppContext.SSIDNameA, SSID_MAX_NAME_LENGTH);
+    UnicodeStrToAsciiStrS (SSIDPassword, gAppContext.SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+
+    Status = ConnectToWiFiAccessPoint (gAppContext.SSIDNameA, gAppContext.SSIDPasswordA);
+
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to specified Wi-Fi access point. (%r).\r\n", Status));
+      goto Exit;
+    }
+
+    gAppContext.bUseWiFiConnection = TRUE;
+
+    // Try again to connecto to the network (this time via the Wi-Fi connection).
+    //
+    Status = ConnectToNetwork (InterfaceInfo);
+
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Unabled to connect to a (Wi-Fi) network (%r).\r\n", Status));
+      goto Exit;
+    }
+  }
+
+Exit:
+
+  return Status;
 }

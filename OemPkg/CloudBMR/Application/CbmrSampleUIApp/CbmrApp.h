@@ -1,11 +1,11 @@
 /** @file CbmrApp.h
 
-  cBMR Sample Application common definitions.
+  cBMR (Cloud Bare Metal Recovery) sample application common definitions
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 
 #ifndef _CBMR_SAMPLE_UI_APP_H_
@@ -13,30 +13,46 @@
 
 #include <Uefi.h>
 
-#include <Library/UefiApplicationEntryPoint.h>
-#include <Library/UefiLib.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/BmpSupportLib.h>
 #include <Library/DebugLib.h>
-#include <Library/UefiBootServicesTableLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/MsColorTableLib.h>
+#include <Library/MsUiThemeLib.h>
+#include <Protocol/OnScreenKeyboard.h>
 #include <Library/PrintLib.h>
 #include <Library/SortLib.h>
-#include <Library/MemoryAllocationLib.h>
+#include <Library/TimerLib.h>
+#include <Library/UefiApplicationEntryPoint.h>
+#include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiLib.h>
 
 #include <Protocol/Ip4Config2.h>
 #include <Protocol/Supplicant.h>
-#include <Protocol/WiFi2.h>
 #include <Protocol/CloudBareMetalRecovery.h>
-#include <Protocol/HiiImage.h>
-#include <Protocol/HiiFont.h>
-#include <Protocol/Shell.h>
 #include <Protocol/GraphicsOutput.h>
-#include <Protocol/SimpleWindowManager.h>
-#include <UIToolKit/SimpleUIToolKit.h>
+#include <Protocol/HiiFont.h>
+#include <Protocol/HiiImage.h>
+#include <Protocol/Shell.h>
 #include <Protocol/SimpleTextInEx.h>
+#include <Protocol/SimpleWindowManager.h>
+#include <Protocol/WiFi2.h>
+
+#include <UIToolKit/SimpleUIToolKit.h>
 
 #define NORMAL_VERTICAL_PADDING_PIXELS   10     // 10 pixels normal padding.
 #define SECTION_VERTICAL_PADDING_PIXELS  20     // 20 pixels padding between sections.
+
+#define DATA_LABEL_MAX_LENGTH     64
+#define SSID_MAX_NAME_LENGTH      64
+#define SSID_MAX_PASSWORD_LENGTH  64
+
+// Dialog Protocol Guid
+#define CBMR_APP_DIALOG_PROTOCOL_GUID  /* 567d4f03-6ff1-45cd-8fc5-9f192bc1450b */     \
+{                                                                                  \
+    0x567d4f03, 0x6ff1, 0x45cd, { 0x8f, 0xc5, 0x9f, 0x19, 0x2b, 0xc1, 0x45, 0x0b } \
+}
 
 // Dialog font sizes.  These represent vertical heights (in pixels) which in turn map to one of the custom fonts
 // registered by the simple window manager.
@@ -45,6 +61,15 @@
 #define SWM_MB_CUSTOM_FONT_TITLEBAR_HEIGHT    MsUiGetSmallFontHeight ()
 #define SWM_MB_CUSTOM_FONT_CAPTION_HEIGHT     MsUiGetLargeFontHeight ()
 #define SWM_MB_CUSTOM_FONT_BODY_HEIGHT        MsUiGetStandardFontHeight ()
+
+typedef struct _CBMR_APP_CONTEXT {
+  BOOLEAN                   bUseWiFiConnection;
+  EFI_IP4_CONFIG2_POLICY    NetworkPolicy;
+  CHAR8                     SSIDNameA[SSID_MAX_NAME_LENGTH];
+  CHAR8                     SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
+  UINT32                    HorizontalResolution;
+  UINT32                    VerticalResolution;
+} CBMR_APP_CONTEXT, *PCBMR_APP_CONTEXT;
 
 typedef enum {
   cBMRState = 0,
@@ -71,7 +96,7 @@ typedef enum {
 EFI_STATUS
 EFIAPI
 GfxSetGraphicsResolution (
-  IN UINT32 DesiredMode,
+  IN UINT32   DesiredMode,
   OUT UINT32  *PreviousMode
   );
 
@@ -109,7 +134,13 @@ CbmrUIWindowMessageHandler (
 
 EFI_STATUS
 EFIAPI
-ConnectToWiredLAN (
+FindAndConnectToNetwork (
+  OUT EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
+  );
+
+EFI_STATUS
+EFIAPI
+ConnectToNetwork (
   EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
   );
 
@@ -118,6 +149,12 @@ EFIAPI
 ConnectToWiFiAccessPoint (
   IN CHAR8  *SSIdName,
   IN CHAR8  *SSIdPassword
+  );
+
+EFI_STATUS
+EFIAPI
+GetDNSServerIpAddress (
+  EFI_IPv4_ADDRESS  *DNSIpAddress
   );
 
 EFI_STATUS
@@ -141,6 +178,14 @@ EFIAPI
 SSIdNameToStr (
   IN  EFI_80211_SSID  *SSIdStruct,
   OUT CHAR8           *SSIdNameStr
+  );
+
+SWM_MB_RESULT
+ProcessWindowInput (
+  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *this,
+  IN  Canvas                             *WindowCanvas,
+  IN  EFI_ABSOLUTE_POINTER_PROTOCOL      *PointerProtocol,
+  IN  UINT64                             Timeout
   );
 
 #endif // _CBMR_SAMPLE_UI_APP_H_

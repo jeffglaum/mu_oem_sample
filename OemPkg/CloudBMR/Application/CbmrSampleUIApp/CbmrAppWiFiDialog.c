@@ -1,26 +1,15 @@
 /** @file CbmrAppWiFiDialog.c
 
-  cBMR Sample Application Wi-Fi dialog routines.
+  cBMR (Cloud Bare Metal Recovery) sample application Wi-Fi dialog implementation.  The dialog
+  is used to present a list of available access points that the user can select from and optionally
+  takes a password for the selected access point.
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 #include "CbmrApp.h"
-
-#include <Pi/PiFirmwareFile.h>
-
-#include <Library/DxeServicesLib.h>
-
-#include <MsDisplayEngine.h>
-
-#include <Protocol/OnScreenKeyboard.h>
-#include <Protocol/SimpleWindowManager.h>
-
-#include <UIToolKit/SimpleUIToolKit.h>
-#include <Library/MsUiThemeLib.h>
-#include <Library/MsColorTableLib.h>
 
 static MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *mSWMProtocol;
 
@@ -33,9 +22,8 @@ EditBox  *PasswordEditBox = NULL;
 
 static EFI_SIMPLE_TEXT_INPUT_EX_PROTOCOL  *gSimpleTextInEx;
 
-extern EFI_HANDLE  gDialogHandle;
-extern UINT32      mBootHorizontalResolution;
-extern UINT32      mBootVerticalResolution;
+extern EFI_HANDLE        gDialogHandle;
+extern CBMR_APP_CONTEXT  gAppContext;
 
 static
 EFI_STATUS
@@ -100,7 +88,7 @@ CbmrUICreateWiFiDialog (
 
   // Vertical offset for the first UI element is at 5% of the total screen height.
   //
-  VerticalOffset = ((mBootVerticalResolution * 5) / 100);
+  VerticalOffset = ((gAppContext.VerticalResolution * 5) / 100);
 
   EFI_FONT_INFO  BodyFontInfo;
 
@@ -205,173 +193,6 @@ Exit:
   return Status;
 }
 
-static
-SWM_MB_RESULT
-ProcessDialogInput (
-  IN  MS_SIMPLE_WINDOW_MANAGER_PROTOCOL  *this,
-  IN  Canvas                             *DialogCanvas,
-  IN  EFI_ABSOLUTE_POINTER_PROTOCOL      *PointerProtocol,
-  IN  UINT64                             Timeout
-  )
-{
-  EFI_STATUS       Status = EFI_SUCCESS;
-  UINTN            Index;
-  OBJECT_STATE     State        = NORMAL;
-  SWM_MB_RESULT    ButtonResult = 0;
-  VOID             *pContext    = NULL;
-  SWM_INPUT_STATE  InputState;
-  UINTN            NumberOfEvents = 2;
-
-  EFI_EVENT  WaitEvents[2];
-
-  // Wait for user input.
-  //
-  WaitEvents[0] = gSimpleTextInEx->WaitForKeyEx;
-  WaitEvents[1] = PointerProtocol->WaitForInput;
-
-  ZeroMem (&InputState, sizeof (SWM_INPUT_STATE));
-
-  do {
-    // Render the canvas and all child controls.
-    //
-    State = DialogCanvas->Base.Draw (
-                                 DialogCanvas,
-                                 FALSE,
-                                 &InputState,
-                                 &pContext
-                                 );
-
-    // If one of the controls indicated they were selected, take action.  Grab the associated context and if a button
-    // was selected, decide the action to be taken.
-    //
-    if (SELECT == State) {
-      // Determine which button was pressed by the context returned.
-      //
-      ButtonResult = (SWM_MB_RESULT)(UINTN)pContext;
-
-      // If user clicked either of the buttons, exit.
-      if (SWM_MB_IDOK == ButtonResult) {
-        DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Button clicked.\n"));
-        break;
-      }
-    }
-
-    while (EFI_SUCCESS == Status) {
-      // Wait for user input.
-      //
-      Status = this->WaitForEvent (
-                       NumberOfEvents,
-                       WaitEvents,
-                       &Index,
-                       Timeout,
-                       FALSE
-                       );
-
-      if ((EFI_SUCCESS == Status) && (0 == Index)) {
-        // Received KEYBOARD input.
-        //
-        InputState.InputType = SWM_INPUT_TYPE_KEY;
-
-        // Read key press data.
-        //
-        Status = gSimpleTextInEx->ReadKeyStrokeEx (
-                                    gSimpleTextInEx,
-                                    &InputState.State.KeyState
-                                    );
-
-        // If the user pressed Enter, proceed with cBMR.
-        //
-        if (CHAR_CARRIAGE_RETURN == InputState.State.KeyState.Key.UnicodeChar) {
-          ButtonResult = SWM_MB_IDOK;
-          break;
-        }
-
-        // If user pressed SHIFT-TAB, move the highlight to the previous control.
-        //
-        if ((CHAR_TAB == InputState.State.KeyState.Key.UnicodeChar) && (0 != (InputState.State.KeyState.KeyState.KeyShiftState & (EFI_LEFT_SHIFT_PRESSED | EFI_RIGHT_SHIFT_PRESSED)))) {
-          // Send the key to the form canvas for processing.
-          //
-          Status = DialogCanvas->MoveHighlight (
-                                   DialogCanvas,
-                                   FALSE
-                                   );
-
-          // If the highlight moved past the top control, clear control highlight and try again - this will wrap the highlight around
-          // to the bottom.  The reason we don't do this automatically is because in other
-          // scenarios, the TAB order needs to include controls outside the canvas (ex:
-          // the Front Page's Top-Menu.
-          //
-          if (EFI_NOT_FOUND == Status) {
-            DialogCanvas->ClearHighlight (DialogCanvas);
-
-            Status = DialogCanvas->MoveHighlight (
-                                     DialogCanvas,
-                                     FALSE
-                                     );
-          }
-
-          continue;
-        }
-
-        // If user pressed TAB, move the highlight to the next control.
-        //
-        if (CHAR_TAB == InputState.State.KeyState.Key.UnicodeChar) {
-          // Send the key to the form canvas for processing.
-          //
-          Status = DialogCanvas->MoveHighlight (
-                                   DialogCanvas,
-                                   TRUE
-                                   );
-
-          // If we moved the highlight to the end of the list of controls, move it back
-          // to the top by clearing teh current highlight and moving to next.  The reason we don't do
-          // this automatically is because in other scenarios, the TAB order needs to include controls
-          // outside the canvas (ex: the Front Page's Top-Menu.
-          //
-          if (EFI_NOT_FOUND == Status) {
-            DialogCanvas->ClearHighlight (DialogCanvas);
-
-            Status = DialogCanvas->MoveHighlight (
-                                     DialogCanvas,
-                                     TRUE
-                                     );
-          }
-
-          continue;
-        }
-
-        break;
-      } else if ((EFI_SUCCESS == Status) && (1 == Index)) {
-        // Received TOUCH input.
-        //
-        static BOOLEAN  WatchForFirstFingerUpEvent = FALSE;
-        BOOLEAN         WatchForFirstFingerUpEvent2;
-
-        InputState.InputType = SWM_INPUT_TYPE_TOUCH;
-
-        Status = PointerProtocol->GetState (
-                                    PointerProtocol,
-                                    &InputState.State.TouchState
-                                    );
-
-        // Filter out all extra pointer moves with finger UP.
-        WatchForFirstFingerUpEvent2 = WatchForFirstFingerUpEvent;
-        WatchForFirstFingerUpEvent  = SWM_IS_FINGER_DOWN (InputState.State.TouchState);
-        if (!SWM_IS_FINGER_DOWN (InputState.State.TouchState) && (FALSE == WatchForFirstFingerUpEvent2)) {
-          continue;
-        }
-
-        break;
-      } else if ((EFI_SUCCESS == Status) && (2 == Index)) {
-        ButtonResult = SWM_MB_TIMEOUT;
-        break;
-      }
-    }
-  } while (0 == ButtonResult && EFI_SUCCESS == Status);
-
-  return (ButtonResult);
-}
-
 EFI_STATUS
 EFIAPI
 CbmrUIGetSSIDAndPassword (
@@ -381,12 +202,12 @@ CbmrUIGetSSIDAndPassword (
   IN UINT8    SSIDPasswordMaxLength
   )
 {
-  EFI_STATUS  Status                 = EFI_SUCCESS;
-  BOOLEAN     DialogWindowRegistered = FALSE;
-  Canvas      *WiFiDialogCanvas      = NULL;
-
-  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol;
-  EFI_80211_GET_NETWORKS_RESULT            *NetworkList;
+  EFI_STATUS                               Status                 = EFI_SUCCESS;
+  BOOLEAN                                  DialogWindowRegistered = FALSE;
+  Canvas                                   *WiFiDialogCanvas      = NULL;
+  UIT_LB_CELLDATA                          *WifiOptionCells       = NULL;
+  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol         = NULL;
+  EFI_80211_GET_NETWORKS_RESULT            *NetworkList           = NULL;
 
   // Locate the Simple Window Manager protocol.
   //
@@ -436,10 +257,13 @@ CbmrUIGetSSIDAndPassword (
     goto Exit;
   }
 
-  // TODO - limit number of SSIDs presented (sort them?)
+  // For presentation purposes, since the list box isn't scrollable, limit the number of SSIDs presented.
+  //
+  UINT8 NumberOfWiFiNetworks = (NetworkList->NumOfNetworkDesc > 5 ? 5 : NetworkList->NumOfNetworkDesc);
 
   // IMPORTANT: Allocate one additional entry so the list is null terminated.
-  UIT_LB_CELLDATA  *WifiOptionCells = AllocateZeroPool ((NetworkList->NumOfNetworkDesc + 1) * sizeof (UIT_LB_CELLDATA));
+  //
+  WifiOptionCells = AllocateZeroPool ((NumberOfWiFiNetworks + 1) * sizeof (UIT_LB_CELLDATA));
 
   if (WifiOptionCells == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
@@ -448,7 +272,7 @@ CbmrUIGetSSIDAndPassword (
 
   CHAR8  SSIDNameA[EFI_MAX_SSID_LEN + 1];
 
-  for (UINTN i = 0; i < NetworkList->NumOfNetworkDesc; i++) {
+  for (UINTN i = 0; i < NumberOfWiFiNetworks; i++) {
     WifiOptionCells[i].CheckBoxSelected = FALSE;
     WifiOptionCells[i].TrashcanEnabled  = FALSE;
     WifiOptionCells[i].CellText         = AllocateZeroPool (sizeof (CHAR16) * (EFI_MAX_SSID_LEN + 1));
@@ -463,10 +287,10 @@ CbmrUIGetSSIDAndPassword (
 
   // Calculate pop-up dialog frame size.
   //
-  DialogRect.Left   = (mBootHorizontalResolution / 4);
+  DialogRect.Left   = (gAppContext.HorizontalResolution / 4);
   DialogRect.Top    = 0;
-  DialogRect.Right  = (DialogRect.Left + (mBootHorizontalResolution / 2));
-  DialogRect.Bottom = (mBootVerticalResolution - 1);
+  DialogRect.Right  = (DialogRect.Left + (gAppContext.HorizontalResolution / 2));
+  DialogRect.Bottom = (gAppContext.VerticalResolution - 1);
 
   // Register with the Simple Window Manager to get mouse and touch input events.
   //
@@ -500,7 +324,7 @@ CbmrUIGetSSIDAndPassword (
              &WiFiDialogCanvas
              );
 
-  SWM_MB_RESULT  Result = ProcessDialogInput (
+  SWM_MB_RESULT  Result = ProcessWindowInput (
                             mSWMProtocol,
                             WiFiDialogCanvas,
                             mCbmrPointerProtocol,
@@ -519,6 +343,8 @@ CbmrUIGetSSIDAndPassword (
 
 Exit:
 
+  // Deactivate and unregister with the window manager as a client.
+  //
   if (DialogWindowRegistered) {
     mSWMProtocol->ActivateWindow (
                     mSWMProtocol,
@@ -526,8 +352,6 @@ Exit:
                     FALSE
                     );
 
-    // Unregister with the window manager as a client.
-    //
     mSWMProtocol->UnregisterClient (
                     mSWMProtocol,
                     gDialogHandle
@@ -535,10 +359,24 @@ Exit:
   }
 
   // Restore UI Handle to normal.
+  //
   InitializeUIToolKit (gImageHandle);
 
-  // TODO delete canvas.
-  // TODO clean up WifiOptionCells.
+  // Clean-up allocations.
+  //
+  if (WifiOptionCells != NULL) {
+    for (UINT8 i = 0; WifiOptionCells[i].CellText != NULL; i++) {
+      FreePool (WifiOptionCells[i].CellText);
+    }
+
+    FreePool (WifiOptionCells);
+  }
+
+  // Delete the dialog canvas and all associated UI elements on it.
+  //
+  if (WiFiDialogCanvas != NULL) {
+    delete_Canvas (WiFiDialogCanvas);
+  }
 
   return (Status);
 }

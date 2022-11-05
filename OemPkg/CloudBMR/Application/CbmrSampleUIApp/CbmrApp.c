@@ -1,34 +1,28 @@
 /** @file CbmrApp.c
 
-  cBMR Sample Application with User Interface
+  cBMR (Cloud Bare Metal Recovery) sample application with user interface
 
   Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
-  The application is intended to be a sample of how to present cBMR (Cloud Bare Metal Recovery) process to the end user.
+  The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 
 #include "CbmrApp.h"
 
-#define SSID_MAX_NAME_LENGTH      64
-#define SSID_MAX_PASSWORD_LENGTH  64
+// Global definitions.
+//
+CBMR_APP_CONTEXT  gAppContext;
+EFI_HANDLE        gDialogHandle;
 
-// Dialog Protocol Guid
-#define CBMR_APP_DIALOG_PROTOCOL_GUID  /* 567d4f03-6ff1-45cd-8fc5-9f192bc1450b */     \
-{                                                                                  \
-    0x567d4f03, 0x6ff1, 0x45cd, { 0x8f, 0xc5, 0x9f, 0x19, 0x2b, 0xc1, 0x45, 0x0b } \
-}
+static PEFI_MS_CBMR_COLLATERAL  gCbmrCollaterals;
+static UINTN                    gNumberOfCollaterals;
+static UINTN                    gAllCollateralsSize;
+static UINTN                    gAllCollateralsRunningSize;
 
-PEFI_MS_CBMR_COLLATERAL  gCbmrCollaterals           = NULL;
-UINTN                    gNumberOfCollaterals       = 0;
-UINTN                    gAllCollateralsSize        = 0; // This is the sum of all collaterals fully downloaded size
-UINTN                    gAllCollateralsRunningSize = 0; // This is the sum of all currently downloaded/downloading
-                                                         // collaterals size
-EFI_HANDLE       gDialogHandle = NULL;
-static EFI_GUID  gDialogGuid   = CBMR_APP_DIALOG_PROTOCOL_GUID;
-
-extern BOOLEAN  PcdCbmrEnableWifiSupport;
-extern UINT32 PcdCbmrGraphicsMode;
+// External definitions.
+//
+extern UINT32  PcdCbmrGraphicsMode;
 
 /**
   Callback that receives updates from the cBMR process sample library handling network negotiations and
@@ -46,13 +40,8 @@ CbmrAppProgressCallback (
   IN EFI_MS_CBMR_PROGRESS   *Progress
   )
 {
-  if (This == NULL) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: [%a] 'This' pointer = %p.\n", __FUNCTION__, This));
-    // Can continue, This is currently not used
-  }
-
   if (Progress == NULL) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: [%a]  'Progress' pointer = %p.\n", __FUNCTION__, Progress));
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: [%a]  Progress callback pointer = %p.\n", __FUNCTION__, Progress));
     return EFI_SUCCESS;
   }
 
@@ -118,99 +107,55 @@ CbmrAppProgressCallback (
   return EFI_SUCCESS;
 }
 
-static EFI_STATUS
+static
+EFI_STATUS
 EFIAPI
-ConnectToNetwork (
-  OUT BOOLEAN  *UseWiFiConnection,
-  OUT CHAR8    *SSIDNameA,
-  IN UINT8     SSIDNameMaxLength,
-  OUT CHAR8    *SSIDPasswordA,
-  IN UINT8     SSIDPasswordMaxLength
+UpdateNetworkInterfaceUI (
+  IN EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo
   )
 {
-  EFI_STATUS                      Status = EFI_SUCCESS;
-  CHAR16                          SSIDName[SSID_MAX_NAME_LENGTH];
-  CHAR16                          SSIDPassword[SSID_MAX_PASSWORD_LENGTH];
-  EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo = NULL;
+  EFI_STATUS  Status = EFI_SUCCESS;
+  CHAR16      SSIDName[SSID_MAX_NAME_LENGTH];
 
-  // Zero stack variables.
+  // Show connected status.
   //
-  ZeroMem (SSIDName, sizeof (SSIDName));
-  ZeroMem (SSIDPassword, sizeof (SSIDPassword));
-
-  // First try to connect to a wired LAN connection.
-  //
-  CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
-  Status = ConnectToWiredLAN (&InterfaceInfo);
-
-  // If that fails, scan for Wi-Fi access points, present a list for the user to select
-  // and try to connect to the selected Wi-Fi access point.
-  //
-  if (EFI_ERROR (Status)) {
-    // If the system designer didn't enable support for Wi-Fi, exit here.
-    //
-    if (FeaturePcdGet (PcdCbmrEnableWifiSupport) == FALSE) {
-      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Unable to connect to a wired LAN network and Wi-Fi isn\'t supported on this platform.\r\n"));
-      goto Exit;
-    }
-
-    // Present WiFi SSID list and try to connect.
-    //
-    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Unable to connect to a wired LAN network, looking for a Wi-Fi access point.\r\n"));
-
-    // Prompt the user for an SSID and password.
-    //
-    Status = CbmrUIGetSSIDAndPassword (&SSIDName[0], SSID_MAX_NAME_LENGTH, &SSIDPassword[0], SSID_MAX_PASSWORD_LENGTH);
-
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "INFO [cBMR App]: Failed to retrieve Wi-Fi SSID and password from user. (%r).\r\n", Status));
-      goto Exit;
-    }
-
-    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: SSIDname=%s, SSIDpassword=%s (Status = %r).\r\n", SSIDName, SSIDPassword, Status));
-
-    // Try to connect to specified Wi-Fi access point with password provided.
-    //
-    UnicodeStrToAsciiStrS (SSIDName, SSIDNameA, SSIDNameMaxLength);
-    UnicodeStrToAsciiStrS (SSIDPassword, SSIDPasswordA, SSIDPasswordMaxLength);
-
-    Status = ConnectToWiFiAccessPoint (SSIDNameA, SSIDPasswordA);
-
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to specified Wi-Fi access point. (%r).\r\n", Status));
-      goto Exit;
-    }
-
-    *UseWiFiConnection = TRUE;
-  }
-
   CbmrUIUpdateLabelValue (NetworkState, L"Connected");
-  CbmrUIUpdateLabelValue (NetworkSSID, (*UseWiFiConnection ? SSIDName : L"N/A (Ethernet)"));
+  AsciiStrToUnicodeStrS (gAppContext.SSIDNameA, SSIDName, SSID_MAX_NAME_LENGTH);
+  CbmrUIUpdateLabelValue (NetworkSSID, (gAppContext.bUseWiFiConnection ? SSIDName : L"N/A (Ethernet)"));
 
-  // TODO
-  // CbmrUIUpdateLabelValue( NetworkPolicy, Policy == Ip4Config2PolicyStatic ? t("Static") : t("DHCP"));
+  // Show network policy type (DHCP vs. Static IP).
+  //
+  CbmrUIUpdateLabelValue (NetworkPolicy, (gAppContext.NetworkPolicy == Ip4Config2PolicyStatic ? L"Static" : L"DHCP"));
 
-  // TODO - how to get IPv4 information from Wi-Fi connection?
+  // Show IP address assigned.
+  //
+  CHAR16  IpAddressString[25];
 
-  if (*UseWiFiConnection == FALSE) {
-    CHAR16  IpAddressString[25];
+  UnicodeSPrint (
+    IpAddressString,
+    sizeof (IpAddressString),
+    L"%u.%u.%u.%u",
+    InterfaceInfo->StationAddress.Addr[0],
+    InterfaceInfo->StationAddress.Addr[1],
+    InterfaceInfo->StationAddress.Addr[2],
+    InterfaceInfo->StationAddress.Addr[3]
+    );
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: IP Address: %s.\r\n", IpAddressString));
+  CbmrUIUpdateLabelValue (NetworkIPAddr, IpAddressString);
 
-    UnicodeSPrint (
-      IpAddressString,
-      sizeof (IpAddressString),
-      L"%u.%u.%u.%u",
-      InterfaceInfo->StationAddress.Addr[0],
-      InterfaceInfo->StationAddress.Addr[1],
-      InterfaceInfo->StationAddress.Addr[2],
-      InterfaceInfo->StationAddress.Addr[3]
-      );
-    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: IP Address: %s.\r\n", IpAddressString));
-    CbmrUIUpdateLabelValue (NetworkIPAddr, IpAddressString);
+  // Show Gateway address.
+  //
+  CHAR16  GatewayAddressString[25];
 
-    // TODO - multiple routing table entries possible.
-    EFI_IP4_ROUTE_TABLE  *RoutingTable = &InterfaceInfo->RouteTable[0];
-
-    CHAR16  GatewayAddressString[25];
+  for (UINTN j = 0; j < InterfaceInfo->RouteTableSize; j++) {
+    EFI_IP4_ROUTE_TABLE  *RoutingTable = &InterfaceInfo->RouteTable[j];
+    if ((RoutingTable->GatewayAddress.Addr[0] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[1] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[2] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[3] == 0))
+    {
+      continue;
+    }
 
     UnicodeSPrint (
       GatewayAddressString,
@@ -223,13 +168,32 @@ ConnectToNetwork (
       );
     DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Gateway Address: %s.\r\n", GatewayAddressString));
     CbmrUIUpdateLabelValue (NetworkGatewayAddr, GatewayAddressString);
-
-    // TODO - DNS server.
-
-    FreePool (InterfaceInfo);
-    InterfaceInfo = NULL;
+    break;
   }
 
+  // Show DNS Server address.
+  //
+  EFI_IPv4_ADDRESS  DNSIpAddress;
+
+  Status = GetDNSServerIpAddress (&DNSIpAddress);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to find DNS Server address (%r).\n", Status));
+    goto Exit;
+  }
+
+  CHAR16  DNSAddressString[25];
+
+  UnicodeSPrint (
+    DNSAddressString,
+    sizeof (DNSAddressString),
+    L"%u.%u.%u.%u",
+    DNSIpAddress.Addr[0],
+    DNSIpAddress.Addr[1],
+    DNSIpAddress.Addr[2],
+    DNSIpAddress.Addr[3]
+    );
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: DNS Server Address: %s.\r\n", DNSAddressString));
+  CbmrUIUpdateLabelValue (NetworkDNSAddr, DNSAddressString);
 Exit:
 
   return Status;
@@ -250,20 +214,16 @@ CbmrAppEntry (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS  Status        = EFI_SUCCESS;
-  UINT32      PreviousMode  = 0;
-  Canvas      *WindowCanvas = NULL;
+  EFI_STATUS                      Status        = EFI_SUCCESS;
+  UINT32                          PreviousMode  = 0;
+  Canvas                          *WindowCanvas = NULL;
+  EFI_GUID                        DialogGuid    = CBMR_APP_DIALOG_PROTOCOL_GUID;
+  CHAR16                          GenericString[DATA_LABEL_MAX_LENGTH];
+  EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo = NULL;
 
-  BOOLEAN  bUseWiFiConnection = FALSE;
-  CHAR8    SSIDNameA[SSID_MAX_NAME_LENGTH];
-  CHAR8    SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
-
-  CHAR16  GenericString[64];
-
-  // Zero stack variables.
+  // Initialize application context.
   //
-  ZeroMem (SSIDNameA, sizeof (SSIDNameA));
-  ZeroMem (SSIDPasswordA, sizeof (SSIDPasswordA));
+  gAppContext.bUseWiFiConnection = FALSE;
 
   // Set the working graphics resolution.
   //
@@ -276,7 +236,8 @@ CbmrAppEntry (
 
   // Obtain a new handle for app pop-up dialogs.
   //
-  Status = gBS->InstallProtocolInterface (&gDialogHandle, &gDialogGuid, EFI_NATIVE_INTERFACE, NULL);
+  Status = gBS->InstallProtocolInterface (&gDialogHandle, &DialogGuid, EFI_NATIVE_INTERFACE, NULL);
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to create dialog window handle (%r).\r\n", Status));
     goto Exit;
@@ -317,12 +278,16 @@ CbmrAppEntry (
 
   // Connect to the network (tries wired LAN first then falls back to Wi-Fi if that fails).
   //
-  Status = ConnectToNetwork (&bUseWiFiConnection, SSIDNameA, SSID_MAX_NAME_LENGTH, SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+  Status = FindAndConnectToNetwork (&InterfaceInfo);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to the network (%r).\r\n", Status));
     goto Exit;
   }
+
+  // Display network connection details.
+  //
+  UpdateNetworkInterfaceUI (InterfaceInfo);
 
   // Locate cBMR protocol.
   //
@@ -347,19 +312,19 @@ CbmrAppEntry (
   EFI_MS_CBMR_CONFIG_DATA  CbmrConfigData;
 
   SetMem (&CbmrConfigData, sizeof (EFI_MS_CBMR_CONFIG_DATA), 0);
-  if (bUseWiFiConnection) {
+  if (gAppContext.bUseWiFiConnection) {
     AsciiStrCpyS (
       CbmrConfigData.WifiProfile.SSId,
       sizeof (CbmrConfigData.WifiProfile.SSId),
-      SSIDNameA
+      gAppContext.SSIDNameA
       );
-    CbmrConfigData.WifiProfile.SSIdLength = AsciiStrLen (SSIDNameA);
+    CbmrConfigData.WifiProfile.SSIdLength = AsciiStrLen (gAppContext.SSIDNameA);
     AsciiStrCpyS (
       CbmrConfigData.WifiProfile.Password,
       sizeof (CbmrConfigData.WifiProfile.Password),
-      SSIDPasswordA
+      gAppContext.SSIDPasswordA
       );
-    CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen (SSIDPasswordA);
+    CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen (gAppContext.SSIDPasswordA);
   }
 
   Status = CbmrProtocolPtr->Configure (
@@ -410,26 +375,34 @@ CbmrAppEntry (
   UnicodeSPrint (GenericString, sizeof (GenericString), L"%d MB", (gAllCollateralsSize / (1024 * 1024)));
   CbmrUIUpdateLabelValue (DownloadTotalSize, GenericString);
 
-  //
   // Start cBMR download.
   //
-
   Status = CbmrProtocolPtr->Start (CbmrProtocolPtr);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to start cBMR download (%r).\r\n", Status));
-    // CbmrShowDriverErrorInfo (CbmrProtocolPtr);
     goto Exit;
   }
 
 Exit:
 
+  // Clean-up.
+  //
   if (gDialogHandle != NULL) {
     gBS->UninstallMultipleProtocolInterfaces (
            gDialogHandle,
-           &gDialogGuid,
+           &DialogGuid,
            NULL
            );
+  }
+
+  if (gCbmrCollaterals != NULL) {
+    FreePool (gCbmrCollaterals);
+  }
+
+  if (InterfaceInfo != NULL) {
+    FreePool (InterfaceInfo);
+    InterfaceInfo = NULL;
   }
 
   return Status;
