@@ -153,8 +153,15 @@ ConnectToWiFiAccessPoint (
 
 EFI_STATUS
 EFIAPI
+GetGatewayIpAddress (
+  IN EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo,
+  OUT EFI_IPv4_ADDRESS               *GatewayIpAddress
+  );
+
+EFI_STATUS
+EFIAPI
 GetDNSServerIpAddress (
-  EFI_IPv4_ADDRESS  *DNSIpAddress
+  OUT EFI_IPv4_ADDRESS  *DNSIpAddress
   );
 
 EFI_STATUS

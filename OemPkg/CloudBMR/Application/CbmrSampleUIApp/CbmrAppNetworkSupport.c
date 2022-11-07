@@ -317,8 +317,45 @@ LocateIp4ConfigProtocol (
 
 EFI_STATUS
 EFIAPI
+GetGatewayIpAddress (
+  IN EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo,
+  OUT EFI_IPv4_ADDRESS               *GatewayIpAddress
+  )
+{
+  EFI_STATUS  Status = EFI_SUCCESS;
+
+  if ((InterfaceInfo == NULL) || (GatewayIpAddress == NULL)) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  for (UINTN j = 0; j < InterfaceInfo->RouteTableSize; j++) {
+    EFI_IP4_ROUTE_TABLE  *RoutingTable = &InterfaceInfo->RouteTable[j];
+    if ((RoutingTable->GatewayAddress.Addr[0] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[1] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[2] == 0) &&
+        (RoutingTable->GatewayAddress.Addr[3] == 0))
+    {
+      continue;
+    }
+
+    GatewayIpAddress->Addr[0] = RoutingTable->GatewayAddress.Addr[0];
+    GatewayIpAddress->Addr[1] = RoutingTable->GatewayAddress.Addr[1];
+    GatewayIpAddress->Addr[2] = RoutingTable->GatewayAddress.Addr[2];
+    GatewayIpAddress->Addr[3] = RoutingTable->GatewayAddress.Addr[3];
+
+    break;
+  }
+
+Exit:
+
+  return Status;
+}
+
+EFI_STATUS
+EFIAPI
 GetDNSServerIpAddress (
-  EFI_IPv4_ADDRESS  *DNSIpAddress
+  OUT EFI_IPv4_ADDRESS  *DNSIpAddress
   )
 {
   EFI_STATUS                Status      = EFI_SUCCESS;
@@ -327,6 +364,11 @@ GetDNSServerIpAddress (
   EFI_IP4_CONFIG2_PROTOCOL  *Ip4Config2 = NULL;
   UINTN                     Size        = 0;
   EFI_IPv4_ADDRESS          *DnsInfo    = NULL;
+
+  if (DNSIpAddress == NULL) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
 
   Status = gBS->LocateHandleBuffer (
                   ByProtocol,
@@ -361,7 +403,7 @@ GetDNSServerIpAddress (
     Status = Ip4Config2->GetData (Ip4Config2, Ip4Config2DataTypeDnsServer, &Size, DnsInfo);
 
     if (EFI_ERROR (Status)) {
-            DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get DNS Server List buffer via Ip4Config2DataTypeDnsServer (%r).\r\n", Status));
+      DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get DNS Server List buffer via Ip4Config2DataTypeDnsServer (%r).\r\n", Status));
       goto Exit;
     }
 
@@ -410,8 +452,8 @@ ConfigureNetwork (
   IN EFI_IP4_CONFIG2_PROTOCOL  *Ip4Config2Protocol
   )
 {
-  EFI_STATUS              Status;
-  UINTN                   Size;
+  EFI_STATUS  Status;
+  UINTN       Size;
 
   DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
 

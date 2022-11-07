@@ -145,31 +145,26 @@ UpdateNetworkInterfaceUI (
 
   // Show Gateway address.
   //
+  EFI_IPv4_ADDRESS  GatewayIpAddress;
+
+  Status = GetGatewayIpAddress (InterfaceInfo, &GatewayIpAddress);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "WARN [cBMR App]: Failed to find Gateway IP address (%r).\n", Status));
+  }
+
   CHAR16  GatewayAddressString[25];
 
-  for (UINTN j = 0; j < InterfaceInfo->RouteTableSize; j++) {
-    EFI_IP4_ROUTE_TABLE  *RoutingTable = &InterfaceInfo->RouteTable[j];
-    if ((RoutingTable->GatewayAddress.Addr[0] == 0) &&
-        (RoutingTable->GatewayAddress.Addr[1] == 0) &&
-        (RoutingTable->GatewayAddress.Addr[2] == 0) &&
-        (RoutingTable->GatewayAddress.Addr[3] == 0))
-    {
-      continue;
-    }
-
-    UnicodeSPrint (
-      GatewayAddressString,
-      sizeof (GatewayAddressString),
-      L"%u.%u.%u.%u",
-      RoutingTable->GatewayAddress.Addr[0],
-      RoutingTable->GatewayAddress.Addr[1],
-      RoutingTable->GatewayAddress.Addr[2],
-      RoutingTable->GatewayAddress.Addr[3]
-      );
-    DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Gateway Address: %s.\r\n", GatewayAddressString));
-    CbmrUIUpdateLabelValue (NetworkGatewayAddr, GatewayAddressString);
-    break;
-  }
+  UnicodeSPrint (
+    GatewayAddressString,
+    sizeof (GatewayAddressString),
+    L"%u.%u.%u.%u",
+    GatewayIpAddress.Addr[0],
+    GatewayIpAddress.Addr[1],
+    GatewayIpAddress.Addr[2],
+    GatewayIpAddress.Addr[3]
+    );
+  DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Gateway Address: %s.\r\n", GatewayAddressString));
+  CbmrUIUpdateLabelValue (NetworkGatewayAddr, GatewayAddressString);
 
   // Show DNS Server address.
   //
@@ -177,8 +172,7 @@ UpdateNetworkInterfaceUI (
 
   Status = GetDNSServerIpAddress (&DNSIpAddress);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to find DNS Server address (%r).\n", Status));
-    goto Exit;
+    DEBUG ((DEBUG_WARN, "WARN [cBMR App]: Failed to find DNS Server address (%r).\n", Status));
   }
 
   CHAR16  DNSAddressString[25];
@@ -194,7 +188,6 @@ UpdateNetworkInterfaceUI (
     );
   DEBUG ((DEBUG_INFO, "INFO [cBMR App]: DNS Server Address: %s.\r\n", DNSAddressString));
   CbmrUIUpdateLabelValue (NetworkDNSAddr, DNSAddressString);
-Exit:
 
   return Status;
 }

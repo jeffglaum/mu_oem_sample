@@ -461,7 +461,7 @@ CbmrUICreateWindow (
   SWM_RECT  DownloadProgressGridRect = { WindowRect.Left, VerticalOffset, WindowRect.Right, (VerticalOffset + (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS)) };
   Grid      *DownloadProgressGrid    = new_Grid (LocalWindowCanvas, DownloadProgressGridRect, 1, 4, FALSE);
 
-  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS + SECTION_VERTICAL_PADDING_PIXELS);
+  VerticalOffset += (SWM_MB_CUSTOM_FONT_BODY_HEIGHT + NORMAL_VERTICAL_PADDING_PIXELS + (SECTION_VERTICAL_PADDING_PIXELS * 2));
   LocalWindowCanvas->AddControl (LocalWindowCanvas, FALSE, TRUE, (VOID *)DownloadProgressGrid);
 
   // Add download progress title text to grid.
