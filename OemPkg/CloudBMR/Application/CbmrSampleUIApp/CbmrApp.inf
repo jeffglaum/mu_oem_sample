@@ -23,10 +23,11 @@
 [Sources]
   CbmrApp.c
   CbmrAppGraphics.c 
-  CbmrAppNetworkSupport.c
   CbmrAppWiFiDialog.c
-  CbmrAppWiFiSupport.c
   CbmrAppWindow.c
+  CbmrNetworkSupport.c
+  CbmrDriverInterface.c
+  CbmrWiFiSupport.c
 
 [Packages]
   MdeModulePkg/MdeModulePkg.dec

@@ -195,4 +195,24 @@ ProcessWindowInput (
   IN  UINT64                             Timeout
   );
 
+EFI_STATUS
+EFIAPI
+CbmrDriverConfigure (
+  IN EFI_MS_CBMR_CONFIG_DATA        *CbmrConfigData,
+  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback
+  );
+
+EFI_STATUS
+EFIAPI
+CbmrDriverFetchCollateral (
+  OUT EFI_MS_CBMR_COLLATERAL  **Collateral,
+  OUT UINTN                   *CollateralSize
+  );
+
+EFI_STATUS
+EFIAPI
+CbmrDriverStartDownload (
+  VOID
+  );
+
 #endif // _CBMR_SAMPLE_UI_APP_H_

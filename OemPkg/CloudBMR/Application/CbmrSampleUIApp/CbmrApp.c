@@ -15,10 +15,7 @@
 CBMR_APP_CONTEXT  gAppContext;
 EFI_HANDLE        gDialogHandle;
 
-static PEFI_MS_CBMR_COLLATERAL  gCbmrCollaterals;
-static UINTN                    gNumberOfCollaterals;
-static UINTN                    gAllCollateralsSize;
-static UINTN                    gAllCollateralsRunningSize;
+static UINTN  gAllCollateralsSize;
 
 // External definitions.
 //
@@ -41,7 +38,7 @@ CbmrAppProgressCallback (
   )
 {
   if (Progress == NULL) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: [%a]  Progress callback pointer = %p.\n", __FUNCTION__, Progress));
+    DEBUG ((DEBUG_WARN, "WARN [cBMR App]: [%a]  Progress callback pointer = %p.\n", __FUNCTION__, Progress));
     return EFI_SUCCESS;
   }
 
@@ -61,30 +58,14 @@ CbmrAppProgressCallback (
     // Periodic callback when downloading collaterals
     case MsCbmrPhaseCollateralsDownloading:
       DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Progress callback: MsCbmrPhaseCollateralsDownloading.\n"));
-      CbmrUIUpdateLabelValue (cBMRState, L"Downloading StubOS...");
-
- #if 0
-      UINTN  PerCollateralRunningSize = Progress->ProgressData.DownloadProgress
-                                          .CollateralDownloadedSize;
-      UINTN  PerCollateralSize               = gCbmrCollaterals[CollateralIndex].CollateralSize;
-      UINTN  PerCollateralProgressPercentage = (100 * PerCollateralRunningSize) /
-                                               PerCollateralSize;
- #endif
-
-      // UINTN  AllCollateralsRunningSize = gAllCollateralsRunningSize + PerCollateralRunningSize;
-      // UINTN  AllCollateralsSize = gAllCollateralsSize;
-      CbmrUIUpdateDownloadProgress (
-        (UINT8)((100 * (gAllCollateralsRunningSize +
-                        Progress->ProgressData.DownloadProgress.CollateralDownloadedSize)) /
-                gAllCollateralsSize)
-        );
-
+      CbmrUIUpdateLabelValue (cBMRState, L"Downloading Recovery Image...");
+      CbmrUIUpdateDownloadProgress ((UINT8)((100 * (Progress->ProgressData.DownloadProgress.CollateralDownloadedSize)) / gAllCollateralsSize));
       break;
 
     // Collateral data has finished it's download process
     case MsCbmrPhaseCollateralsDownloaded:
       DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Progress callback: MsCbmrPhaseCollateralsDownloaded.\n"));
-      CbmrUIUpdateLabelValue (cBMRState, L"Downloaded StubOS.");
+      CbmrUIUpdateLabelValue (cBMRState, L"Downloaded Recovery Image.");
       break;
 
     // Network servicing periodic callback
@@ -96,7 +77,7 @@ CbmrAppProgressCallback (
     // Final callback prior to jumping to Stub-OS
     case MsCbmrPhaseStubOsRamboot:
       DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Progress callback: MsCbmrPhaseStubOsRamboot.\n"));
-      CbmrUIUpdateLabelValue (cBMRState, L"Jumping to StubOS...");
+      CbmrUIUpdateLabelValue (cBMRState, L"Jumping to Recovery Image...");
       break;
 
     default:
@@ -107,6 +88,13 @@ CbmrAppProgressCallback (
   return EFI_SUCCESS;
 }
 
+/**
+  Updates networking status on the main window.
+
+  @param[in]  InterfaceInfo       Pointer to the IP4 network interface struture for the active, selected network.
+
+  @retval     EFI_STATUS
+**/
 static
 EFI_STATUS
 EFIAPI
@@ -216,9 +204,9 @@ CbmrAppEntry (
 
   // Initialize application context.
   //
-  gAppContext.bUseWiFiConnection = FALSE;
+  gAppContext.bUseWiFiConnection = FALSE;     // Initially we won't try to use Wi-Fi but optionally can fall-back to it if a wired LAN connection isn't found.
 
-  // Set the working graphics resolution.
+  // Set the working graphics mode.
   //
   Status = GfxSetGraphicsResolution (FixedPcdGet32 (PcdCbmrGraphicsMode), &PreviousMode);
 
@@ -254,7 +242,7 @@ CbmrAppEntry (
     goto Exit;
   }
 
-  // Ready.  Wait for user input to either proceed with cBMR or to cancel.
+  // Ready.  Wait for user input to either proceed with cBMR or to cancel/exit.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Ready");
 
@@ -282,23 +270,6 @@ CbmrAppEntry (
   //
   UpdateNetworkInterfaceUI (InterfaceInfo);
 
-  // Locate cBMR protocol.
-  //
-  CbmrUIUpdateLabelValue (cBMRState, L"Locating cBMR driver...");
-
-  EFI_MS_CBMR_PROTOCOL  *CbmrProtocolPtr;
-
-  Status = gBS->LocateProtocol (
-                  &gEfiMsCbmrProtocolGuid,
-                  NULL,
-                  (VOID **)&CbmrProtocolPtr
-                  );
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to locate cBMR (driver) protocol (%r).\r\n", Status));
-    goto Exit;
-  }
-
   // Configure cBMR (driver) protocol.
   //
   CbmrUIUpdateLabelValue (cBMRState, L"Configuring cBMR driver...");
@@ -306,26 +277,13 @@ CbmrAppEntry (
 
   SetMem (&CbmrConfigData, sizeof (EFI_MS_CBMR_CONFIG_DATA), 0);
   if (gAppContext.bUseWiFiConnection) {
-    AsciiStrCpyS (
-      CbmrConfigData.WifiProfile.SSId,
-      sizeof (CbmrConfigData.WifiProfile.SSId),
-      gAppContext.SSIDNameA
-      );
+    AsciiStrCpyS (CbmrConfigData.WifiProfile.SSId, sizeof (CbmrConfigData.WifiProfile.SSId), gAppContext.SSIDNameA);
     CbmrConfigData.WifiProfile.SSIdLength = AsciiStrLen (gAppContext.SSIDNameA);
-    AsciiStrCpyS (
-      CbmrConfigData.WifiProfile.Password,
-      sizeof (CbmrConfigData.WifiProfile.Password),
-      gAppContext.SSIDPasswordA
-      );
+    AsciiStrCpyS (CbmrConfigData.WifiProfile.Password, sizeof (CbmrConfigData.WifiProfile.Password), gAppContext.SSIDPasswordA);
     CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen (gAppContext.SSIDPasswordA);
   }
 
-  Status = CbmrProtocolPtr->Configure (
-                              CbmrProtocolPtr,
-                              &CbmrConfigData,
-                              (EFI_MS_CBMR_PROGRESS_CALLBACK)CbmrAppProgressCallback
-                              );
-
+  Status = CbmrDriverConfigure (&CbmrConfigData, CbmrAppProgressCallback);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to configure cBMR protocol (%r).\r\n", Status));
     goto Exit;
@@ -333,44 +291,31 @@ CbmrAppEntry (
 
   // Fetch cBMR download collateral information.
   //
-  CbmrUIUpdateLabelValue (cBMRState, L"Fetching manifest...");
+  CbmrUIUpdateLabelValue (cBMRState, L"Fetching collateral...");
 
-  UINTN  DataSize = 0;
+  UINTN                    CollateralDataSize  = 0;
+  PEFI_MS_CBMR_COLLATERAL  CbmrCollaterals     = NULL;
+  UINTN                    NumberOfCollaterals = 0;
 
-  Status = CbmrProtocolPtr->GetData (CbmrProtocolPtr, EfiMsCbmrCollaterals, NULL, &DataSize);
-  if (EFI_ERROR (Status) && (Status != EFI_BUFFER_TOO_SMALL)) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to get cBMR collateral size (%r).\r\n", Status));
-    goto Exit;
-  }
-
-  gCbmrCollaterals = AllocateZeroPool (DataSize);
-  if (gCbmrCollaterals == NULL) {
-    DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to memory buffer for cBMR collateral  (%r).\r\n", Status));
-
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Exit;
-  }
-
-  Status = CbmrProtocolPtr->GetData (CbmrProtocolPtr, EfiMsCbmrCollaterals, gCbmrCollaterals, &DataSize);
+  Status = CbmrDriverFetchCollateral (&CbmrCollaterals, &CollateralDataSize);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to fetch cBMR collateral (%r).\r\n", Status));
     goto Exit;
   }
 
-  gNumberOfCollaterals = DataSize / sizeof (EFI_MS_CBMR_COLLATERAL);
-
-  for (UINTN i = 0; i < gNumberOfCollaterals; i++) {
-    gAllCollateralsSize += gCbmrCollaterals[i].CollateralSize;
+  NumberOfCollaterals = CollateralDataSize / sizeof (EFI_MS_CBMR_COLLATERAL);
+  for (UINTN i = 0; i < NumberOfCollaterals; i++) {
+    gAllCollateralsSize += CbmrCollaterals[i].CollateralSize;
   }
 
-  UnicodeSPrint (GenericString, sizeof (GenericString), L"%d", gNumberOfCollaterals);
+  UnicodeSPrint (GenericString, sizeof (GenericString), L"%d", NumberOfCollaterals);
   CbmrUIUpdateLabelValue (DownloadFileCount, GenericString);
   UnicodeSPrint (GenericString, sizeof (GenericString), L"%d MB", (gAllCollateralsSize / (1024 * 1024)));
   CbmrUIUpdateLabelValue (DownloadTotalSize, GenericString);
 
   // Start cBMR download.
   //
-  Status = CbmrProtocolPtr->Start (CbmrProtocolPtr);
+  Status = CbmrDriverStartDownload ();
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to start cBMR download (%r).\r\n", Status));
@@ -389,8 +334,8 @@ Exit:
            );
   }
 
-  if (gCbmrCollaterals != NULL) {
-    FreePool (gCbmrCollaterals);
+  if (CbmrCollaterals != NULL) {
+    FreePool (CbmrCollaterals);
   }
 
   if (InterfaceInfo != NULL) {
