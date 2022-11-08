@@ -259,7 +259,7 @@ CbmrUIGetSSIDAndPassword (
 
   // For presentation purposes, since the list box isn't scrollable, limit the number of SSIDs presented.
   //
-  UINT8 NumberOfWiFiNetworks = (NetworkList->NumOfNetworkDesc > 5 ? 5 : NetworkList->NumOfNetworkDesc);
+  UINT8  NumberOfWiFiNetworks = (NetworkList->NumOfNetworkDesc > 5 ? 5 : NetworkList->NumOfNetworkDesc);
 
   // IMPORTANT: Allocate one additional entry so the list is null terminated.
   //
@@ -335,8 +335,10 @@ CbmrUIGetSSIDAndPassword (
     LB_RETURN_DATA  SelectedCellData;
     WifiSSIDList->GetSelectedCellIndex (WifiSSIDList, &SelectedCellData);
     StrCpyS (SSIDName, SSIDNameMaxLength, WifiOptionCells[SelectedCellData.SelectedCell].CellText);
-
     StrCpyS (SSIDPassword, SSIDPasswordMaxLength, PasswordEditBox->GetCurrentTextString (PasswordEditBox));
+
+    StrCpyS (gAppContext.SSIDNameW, SSIDNameMaxLength, WifiOptionCells[SelectedCellData.SelectedCell].CellText);
+    StrCpyS (gAppContext.SSIDPasswordW, SSIDPasswordMaxLength, PasswordEditBox->GetCurrentTextString (PasswordEditBox));
 
     Status = EFI_SUCCESS;
   }

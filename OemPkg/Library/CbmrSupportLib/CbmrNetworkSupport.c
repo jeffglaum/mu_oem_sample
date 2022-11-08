@@ -8,17 +8,17 @@
   The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 
-#include "CbmrApp.h"
+#include <Library/CbmrSupportLib.h>
 
 // Event used when a network protocol process is blocked by another in use process
 EFI_EVENT  gEventFlag = NULL;
+
+static EFI_IP4_CONFIG2_POLICY  gNetworkPolicy = Ip4Config2PolicyStatic;
 
 extern UINTN    PcdCbmrSetDhcpPolicyTimeout;
 extern UINTN    PcdCbmrGetNetworkIPAddressTimeout;
 extern UINTN    PcdCbmrGetNetworkInterfaceInfoTimeout;
 extern BOOLEAN  PcdCbmrEnableWifiSupport;
-
-extern CBMR_APP_CONTEXT  gAppContext;
 
 /**
   Network event callback to support WaitForDataNotify ().  The callback will close the triggering event and if the
@@ -439,6 +439,17 @@ Exit:
   return Status;
 }
 
+EFI_STATUS
+EFIAPI
+GetNetworkPolicy (
+  OUT EFI_IP4_CONFIG2_POLICY  *Policy
+  )
+{
+  *Policy = gNetworkPolicy;
+
+  return EFI_SUCCESS;
+}
+
 /**
   Sends a DHCP configuration request to the network
 
@@ -452,8 +463,9 @@ ConfigureNetwork (
   IN EFI_IP4_CONFIG2_PROTOCOL  *Ip4Config2Protocol
   )
 {
-  EFI_STATUS  Status;
-  UINTN       Size;
+  EFI_STATUS              Status;
+  UINTN                   Size;
+  EFI_IP4_CONFIG2_POLICY  NetworkPolicy;
 
   DEBUG ((DEBUG_INFO, "INFO [cBMR App]: Entered function %a()\n", __FUNCTION__));
 
@@ -463,7 +475,7 @@ ConfigureNetwork (
              Ip4Config2Protocol,
              Ip4Config2DataTypePolicy,
              &Size,
-             &gAppContext.NetworkPolicy,
+             &NetworkPolicy,
              FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
              );
   if (EFI_ERROR (Status)) {
@@ -471,19 +483,19 @@ ConfigureNetwork (
     return Status;
   }
 
-  if (gAppContext.NetworkPolicy == Ip4Config2PolicyDhcp) {
+  if (NetworkPolicy == Ip4Config2PolicyDhcp) {
     return EFI_SUCCESS;
   }
 
   // If not, send the configuration policy request for DHCP
-  gAppContext.NetworkPolicy = Ip4Config2PolicyDhcp;
-  Status                    = AsynchronousIP4CfgSetData (
-                                Ip4Config2Protocol,
-                                Ip4Config2DataTypePolicy,
-                                sizeof (EFI_IP4_CONFIG2_POLICY),
-                                &gAppContext.NetworkPolicy,
-                                FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
-                                );
+  NetworkPolicy = Ip4Config2PolicyDhcp;
+  Status        = AsynchronousIP4CfgSetData (
+                    Ip4Config2Protocol,
+                    Ip4Config2DataTypePolicy,
+                    sizeof (EFI_IP4_CONFIG2_POLICY),
+                    &NetworkPolicy,
+                    FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
+                    );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::SetData( Ip4Config2PolicyDhcp ) - Status %r\n", Status));
     return Status;
@@ -495,7 +507,7 @@ ConfigureNetwork (
              Ip4Config2Protocol,
              Ip4Config2DataTypePolicy,
              &Size,
-             &gAppContext.NetworkPolicy,
+             &NetworkPolicy,
              FixedPcdGet32 (PcdCbmrSetDhcpPolicyTimeout)
              );
   if (EFI_ERROR (Status)) {
@@ -503,11 +515,13 @@ ConfigureNetwork (
     return Status;
   }
 
-  if (gAppContext.NetworkPolicy != Ip4Config2PolicyDhcp) {
+  if (NetworkPolicy != Ip4Config2PolicyDhcp) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: EFI_IP4_CONFIG2_PROTOCOL::GetData( Ip4Config2PolicyDhcp )\n"));
     DEBUG ((DEBUG_ERROR, "                  Policy data was not committed to driver\n"));
     return EFI_PROTOCOL_ERROR;
   }
+
+  gNetworkPolicy = NetworkPolicy;
 
   return EFI_SUCCESS;
 }
@@ -648,12 +662,16 @@ ConnectToNetwork (
 EFI_STATUS
 EFIAPI
 FindAndConnectToNetwork (
-  OUT EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
+  IN PFN_GET_SSID_AND_PASSWORD_FROM_USER  GetWiFiCredentialsCallback,
+  OUT EFI_IP4_CONFIG2_INTERFACE_INFO      **InterfaceInfo,
+  OUT BOOLEAN                             *bIsWiFiConnection
   )
 {
   EFI_STATUS  Status = EFI_SUCCESS;
   CHAR16      SSIDName[SSID_MAX_NAME_LENGTH];
   CHAR16      SSIDPassword[SSID_MAX_PASSWORD_LENGTH];
+  CHAR8       SSIDNameA[SSID_MAX_NAME_LENGTH];
+  CHAR8       SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
 
   // Zero stack variables.
   //
@@ -662,7 +680,6 @@ FindAndConnectToNetwork (
 
   // First try to connect to an active (usually wired) network.
   //
-  CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
   Status = ConnectToNetwork (InterfaceInfo);
 
   // If that fails, scan for Wi-Fi access points, present a list for the user to select
@@ -682,7 +699,11 @@ FindAndConnectToNetwork (
 
     // Prompt the user for an SSID and password.
     //
-    Status = CbmrUIGetSSIDAndPassword (&SSIDName[0], SSID_MAX_NAME_LENGTH, &SSIDPassword[0], SSID_MAX_PASSWORD_LENGTH);
+    if (GetWiFiCredentialsCallback != NULL) {
+      Status = GetWiFiCredentialsCallback (&SSIDName[0], SSID_MAX_NAME_LENGTH, &SSIDPassword[0], SSID_MAX_PASSWORD_LENGTH);
+    } else {
+      Status = EFI_INVALID_PARAMETER;
+    }
 
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to retrieve Wi-Fi SSID and password from user (%r).\r\n", Status));
@@ -693,17 +714,17 @@ FindAndConnectToNetwork (
 
     // Try to connect to specified Wi-Fi access point with password provided.
     //
-    UnicodeStrToAsciiStrS (SSIDName, gAppContext.SSIDNameA, SSID_MAX_NAME_LENGTH);
-    UnicodeStrToAsciiStrS (SSIDPassword, gAppContext.SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+    UnicodeStrToAsciiStrS (SSIDName, SSIDNameA, SSID_MAX_NAME_LENGTH);
+    UnicodeStrToAsciiStrS (SSIDPassword, SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
 
-    Status = ConnectToWiFiAccessPoint (gAppContext.SSIDNameA, gAppContext.SSIDPasswordA);
+    Status = ConnectToWiFiAccessPoint (SSIDNameA, SSIDPasswordA);
 
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to specified Wi-Fi access point. (%r).\r\n", Status));
       goto Exit;
     }
 
-    gAppContext.bUseWiFiConnection = TRUE;
+    *bIsWiFiConnection = TRUE;
 
     // Try again to connecto to the network (this time via the Wi-Fi connection).
     //

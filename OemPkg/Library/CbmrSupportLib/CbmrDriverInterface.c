@@ -8,7 +8,7 @@
   cBMR driver interface routines that can be used by the cBMR application to configure and control driver behavior.
 **/
 
-#include "CbmrApp.h"
+#include <Library/CbmrSupportLib.h>
 
 static EFI_MS_CBMR_PROTOCOL  *CbmrProtocolPtr;
 
@@ -104,7 +104,7 @@ CbmrDriverFetchCollateral (
     goto Exit;
   }
 
-  *Collateral = LocalCollateral;
+  *Collateral     = LocalCollateral;
   *CollateralSize = DataSize;
 
 Exit:

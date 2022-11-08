@@ -16,11 +16,12 @@
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BmpSupportLib.h>
+#include <Library/CbmrSupportLib.h>
 #include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/MsColorTableLib.h>
 #include <Library/MsUiThemeLib.h>
-#include <Protocol/OnScreenKeyboard.h>
+
 #include <Library/PrintLib.h>
 #include <Library/SortLib.h>
 #include <Library/TimerLib.h>
@@ -28,12 +29,10 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 
-#include <Protocol/Ip4Config2.h>
-#include <Protocol/Supplicant.h>
-#include <Protocol/CloudBareMetalRecovery.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/HiiFont.h>
 #include <Protocol/HiiImage.h>
+#include <Protocol/OnScreenKeyboard.h>
 #include <Protocol/Shell.h>
 #include <Protocol/SimpleTextInEx.h>
 #include <Protocol/SimpleWindowManager.h>
@@ -63,12 +62,11 @@
 #define SWM_MB_CUSTOM_FONT_BODY_HEIGHT        MsUiGetStandardFontHeight ()
 
 typedef struct _CBMR_APP_CONTEXT {
-  BOOLEAN                   bUseWiFiConnection;
-  EFI_IP4_CONFIG2_POLICY    NetworkPolicy;
-  CHAR8                     SSIDNameA[SSID_MAX_NAME_LENGTH];
-  CHAR8                     SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
-  UINT32                    HorizontalResolution;
-  UINT32                    VerticalResolution;
+  BOOLEAN    bUseWiFiConnection;
+  CHAR16     SSIDNameW[SSID_MAX_NAME_LENGTH];
+  CHAR16     SSIDPasswordW[SSID_MAX_PASSWORD_LENGTH];
+  UINT32     HorizontalResolution;
+  UINT32     VerticalResolution;
 } CBMR_APP_CONTEXT, *PCBMR_APP_CONTEXT;
 
 typedef enum {
@@ -134,57 +132,11 @@ CbmrUIWindowMessageHandler (
 
 EFI_STATUS
 EFIAPI
-FindAndConnectToNetwork (
-  OUT EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
-  );
-
-EFI_STATUS
-EFIAPI
-ConnectToNetwork (
-  EFI_IP4_CONFIG2_INTERFACE_INFO  **InterfaceInfo
-  );
-
-EFI_STATUS
-EFIAPI
-ConnectToWiFiAccessPoint (
-  IN CHAR8  *SSIdName,
-  IN CHAR8  *SSIdPassword
-  );
-
-EFI_STATUS
-EFIAPI
-GetGatewayIpAddress (
-  IN EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo,
-  OUT EFI_IPv4_ADDRESS               *GatewayIpAddress
-  );
-
-EFI_STATUS
-EFIAPI
-GetDNSServerIpAddress (
-  OUT EFI_IPv4_ADDRESS  *DNSIpAddress
-  );
-
-EFI_STATUS
-EFIAPI
 CbmrUIGetSSIDAndPassword (
   OUT CHAR16  *SSIDName,
   IN UINT8    SSIDNameMaxLength,
   OUT CHAR16  *SSIdPassword,
   IN UINT8    SSIDPasswordMaxLength
-  );
-
-EFI_STATUS
-EFIAPI
-GetWiFiNetworkList (
-  IN  EFI_WIRELESS_MAC_CONNECTION_II_PROTOCOL  *WiFi2Protocol,
-  OUT EFI_80211_GET_NETWORKS_RESULT            **NetworkInfoPtr
-  );
-
-VOID
-EFIAPI
-SSIdNameToStr (
-  IN  EFI_80211_SSID  *SSIdStruct,
-  OUT CHAR8           *SSIdNameStr
   );
 
 SWM_MB_RESULT
@@ -193,26 +145,6 @@ ProcessWindowInput (
   IN  Canvas                             *WindowCanvas,
   IN  EFI_ABSOLUTE_POINTER_PROTOCOL      *PointerProtocol,
   IN  UINT64                             Timeout
-  );
-
-EFI_STATUS
-EFIAPI
-CbmrDriverConfigure (
-  IN EFI_MS_CBMR_CONFIG_DATA        *CbmrConfigData,
-  IN EFI_MS_CBMR_PROGRESS_CALLBACK  ProgressCallback
-  );
-
-EFI_STATUS
-EFIAPI
-CbmrDriverFetchCollateral (
-  OUT EFI_MS_CBMR_COLLATERAL  **Collateral,
-  OUT UINTN                   *CollateralSize
-  );
-
-EFI_STATUS
-EFIAPI
-CbmrDriverStartDownload (
-  VOID
   );
 
 #endif // _CBMR_SAMPLE_UI_APP_H_

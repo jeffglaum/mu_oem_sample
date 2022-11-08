@@ -102,18 +102,20 @@ UpdateNetworkInterfaceUI (
   IN EFI_IP4_CONFIG2_INTERFACE_INFO  *InterfaceInfo
   )
 {
-  EFI_STATUS  Status = EFI_SUCCESS;
-  CHAR16      SSIDName[SSID_MAX_NAME_LENGTH];
+  EFI_STATUS              Status = EFI_SUCCESS;
+  EFI_IP4_CONFIG2_POLICY  Policy;
 
   // Show connected status.
   //
   CbmrUIUpdateLabelValue (NetworkState, L"Connected");
-  AsciiStrToUnicodeStrS (gAppContext.SSIDNameA, SSIDName, SSID_MAX_NAME_LENGTH);
-  CbmrUIUpdateLabelValue (NetworkSSID, (gAppContext.bUseWiFiConnection ? SSIDName : L"N/A (Ethernet)"));
+  CbmrUIUpdateLabelValue (NetworkSSID, (gAppContext.bUseWiFiConnection ? gAppContext.SSIDNameW : L"N/A (Ethernet)"));
 
   // Show network policy type (DHCP vs. Static IP).
   //
-  CbmrUIUpdateLabelValue (NetworkPolicy, (gAppContext.NetworkPolicy == Ip4Config2PolicyStatic ? L"Static" : L"DHCP"));
+  Status = GetNetworkPolicy (&Policy);
+  if (!EFI_ERROR (Status)) {
+    CbmrUIUpdateLabelValue (NetworkPolicy, (Policy == Ip4Config2PolicyStatic ? L"Static" : L"DHCP"));
+  }
 
   // Show IP address assigned.
   //
@@ -259,7 +261,8 @@ CbmrAppEntry (
 
   // Connect to the network (tries wired LAN first then falls back to Wi-Fi if that fails).
   //
-  Status = FindAndConnectToNetwork (&InterfaceInfo);
+  CbmrUIUpdateLabelValue (cBMRState, L"Connecting to network...");
+  Status = FindAndConnectToNetwork (CbmrUIGetSSIDAndPassword, &InterfaceInfo, &gAppContext.bUseWiFiConnection);
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ERROR [cBMR App]: Failed to connect to the network (%r).\r\n", Status));
@@ -277,10 +280,16 @@ CbmrAppEntry (
 
   SetMem (&CbmrConfigData, sizeof (EFI_MS_CBMR_CONFIG_DATA), 0);
   if (gAppContext.bUseWiFiConnection) {
-    AsciiStrCpyS (CbmrConfigData.WifiProfile.SSId, sizeof (CbmrConfigData.WifiProfile.SSId), gAppContext.SSIDNameA);
-    CbmrConfigData.WifiProfile.SSIdLength = AsciiStrLen (gAppContext.SSIDNameA);
-    AsciiStrCpyS (CbmrConfigData.WifiProfile.Password, sizeof (CbmrConfigData.WifiProfile.Password), gAppContext.SSIDPasswordA);
-    CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen (gAppContext.SSIDPasswordA);
+    CHAR8  SSIDNameA[SSID_MAX_NAME_LENGTH];
+    CHAR8  SSIDPasswordA[SSID_MAX_PASSWORD_LENGTH];
+
+    UnicodeStrToAsciiStrS (gAppContext.SSIDNameW, SSIDNameA, SSID_MAX_NAME_LENGTH);
+    UnicodeStrToAsciiStrS (gAppContext.SSIDPasswordW, SSIDPasswordA, SSID_MAX_PASSWORD_LENGTH);
+
+    AsciiStrCpyS (CbmrConfigData.WifiProfile.SSId, sizeof (CbmrConfigData.WifiProfile.SSId), SSIDNameA);
+    CbmrConfigData.WifiProfile.SSIdLength = AsciiStrLen (SSIDNameA);
+    AsciiStrCpyS (CbmrConfigData.WifiProfile.Password, sizeof (CbmrConfigData.WifiProfile.Password), SSIDPasswordA);
+    CbmrConfigData.WifiProfile.PasswordLength = AsciiStrLen (SSIDPasswordA);
   }
 
   Status = CbmrDriverConfigure (&CbmrConfigData, CbmrAppProgressCallback);

@@ -8,7 +8,7 @@
   The application is a sample, demonstrating how one might present the cBMR process to a user.
 **/
 
-#include "CbmrApp.h"
+#include <Library/CbmrSupportLib.h>
 
 // Event used with the WiFi protocol
 EFI_EVENT  gWiFiEvent = NULL;
