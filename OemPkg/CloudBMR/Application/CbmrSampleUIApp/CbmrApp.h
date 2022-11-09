@@ -21,7 +21,6 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/MsColorTableLib.h>
 #include <Library/MsUiThemeLib.h>
-
 #include <Library/PrintLib.h>
 #include <Library/SortLib.h>
 #include <Library/TimerLib.h>
